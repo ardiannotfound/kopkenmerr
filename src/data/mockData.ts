@@ -28,7 +28,15 @@ export interface Ticket {
   type: 'incident' | 'request';
   title: string;
   description: string;
-  status: 'pending' | 'assigned' | 'in_progress' | 'resolved' | 'closed';
+  status:
+  | 'pending'
+  | 'assigned'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed'
+  | 'ready'
+  | 'waiting_seksi'
+  | 'waiting_bidang';
   priority: 'low' | 'medium' | 'high';
   requesterId: string; // Link ke User
   technicianId?: string; // Link ke Teknisi
@@ -36,6 +44,13 @@ export interface Ticket {
   opd: string;
   assetName?: string; // Untuk Incident
   serviceId?: string; // Untuk Request
+  slaStart?: string; // Waktu mulai dikerjakan
+  slaEnd?: string;   // Waktu selesai
+  workNotes?: string;
+  // TAMBAHAN BARU:
+  checkInTime?: string; // Waktu teknisi sampai lokasi
+  checkInLocation?: string; // Koordinat saat check-in
+  location?: { lat: number; lng: number; address: string }; // Koordinat target
 }
 
 // 2. Data Dummy Users
@@ -73,30 +88,36 @@ export const MOCK_SERVICES: ServiceItem[] = [
 export const MOCK_TICKETS: Ticket[] = [
   {
     id: 't1',
-    ticketNumber: 'INC-202312-001',
+    ticketNumber: 'INC-202512-001',
     type: 'incident',
     title: 'Wifi Kopi Kenangan Error',
     description: 'Tidak bisa login page captive portal',
-    status: 'pending',
+    status: 'ready', // <--- "Siap Dikerjakan"
     priority: 'high',
     requesterId: 'u1',
+    technicianId: 'u2', // Milik Teknisi 1 (u2)
     createdAt: '2025-12-03T08:00:00Z',
     opd: 'Dinas Kominfo',
     assetName: 'Router Lt 1',
+    location: { 
+      lat: -7.2575, 
+      lng: 112.7521, 
+      address: 'Jl. Pahlawan No.110, Surabaya' 
+    }
   },
   {
     id: 't2',
-    ticketNumber: 'REQ-202312-002',
+    ticketNumber: 'REQ-202512-002',
     type: 'request',
     title: 'Minta Mouse Baru',
     description: 'Mouse lama scrollnya rusak',
-    status: 'in_progress',
+    status: 'in_progress', // <--- "Sedang Dikerjakan"
     priority: 'medium',
     requesterId: 'u1',
     technicianId: 'u2',
     createdAt: '2025-12-02T10:00:00Z',
     opd: 'Dinas Kominfo',
-    serviceId: 's2',
+    slaStart: '2025-12-03T09:00:00Z', // Sudah mulai dikerjakan
   },
   {
     id: 't3',
@@ -104,13 +125,27 @@ export const MOCK_TICKETS: Ticket[] = [
     type: 'incident',
     title: 'Printer Macet',
     description: 'Kertas nyangkut dan tinta bocor.',
-    status: 'closed', // <--- PENTING: Status Closed
+    status: 'closed', 
     priority: 'low',
     requesterId: 'u1',
     technicianId: 'u2',
     createdAt: '2025-11-20T08:00:00Z',
     opd: 'Dinas Kominfo',
     assetName: 'Printer Epson L3110',
+  },
+  // Tambah tiket baru untuk test status lain
+  {
+    id: 't4',
+    ticketNumber: 'REQ-202512-005',
+    type: 'request',
+    title: 'Akses VPN',
+    description: 'Butuh akses remote working',
+    status: 'waiting_seksi', // <--- "Menunggu Approval Seksi"
+    priority: 'medium',
+    requesterId: 'u1',
+    technicianId: 'u2',
+    createdAt: '2025-12-03T10:00:00Z',
+    opd: 'Bappeda',
   },
 ];
 
@@ -200,3 +235,38 @@ export const MOCK_NOTIFICATIONS: NotificationItem[] = [
     ticketId: 't3',
   },
 ];
+
+export const WORKING_HOURS = [
+  { day: 'Senin', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Selasa', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Rabu', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Kamis', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Jumat', open: '08:00', close: '15:30', isOpen: true }, // Pulang cepat
+  { day: 'Sabtu', open: '-', close: '-', isOpen: false },
+  { day: 'Minggu', open: '-', close: '-', isOpen: false },
+];
+
+// 10. Data Libur (Mock Desember 2025)
+export const MOCK_HOLIDAYS = [
+  { date: '2025-12-25', name: 'Hari Raya Natal', isNational: true },
+  { date: '2025-12-26', name: 'Cuti Bersama Natal', isNational: true },
+  { date: '2026-01-01', name: 'Tahun Baru 2026', isNational: true },
+  { date: '2026-01-27', name: 'Isra Mikraj', isNational: true },
+];
+export const PERFORMANCE_DATA = {
+  stats: {
+    ticketsResolved: { value: 45, diff: 12, isBetter: true }, // Naik 12 tiket (Bagus)
+    mttr: { value: '2.5 Jam', diff: -15, isBetter: true }, // Turun 15% waktunya (Bagus karena makin cepat)
+    slaCompliance: { value: '98%', diff: 2, isBetter: true }, // Naik 2% (Bagus)
+    csat: { value: '4.8/5', diff: -0.1, isBetter: false }, // Turun 0.1 (Kurang Bagus)
+  },
+  weeklyTrend: {
+    labels: ["Minggu 1", "Minggu 2", "Minggu 3", "Minggu 4"],
+    incoming: [10, 15, 8, 12],
+    resolved: [9, 14, 8, 11]
+  },
+  composition: [
+    { name: "Insiden", population: 65, color: "#ef5350", legendFontColor: "#7F7F7F", legendFontSize: 12 },
+    { name: "Permintaan", population: 35, color: "#42a5f5", legendFontColor: "#7F7F7F", legendFontSize: 12 }
+  ]
+};

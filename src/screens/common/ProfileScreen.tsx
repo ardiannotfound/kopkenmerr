@@ -79,6 +79,29 @@ export default function ProfileScreen() {
               <Text style={styles.menuText}>Ganti Kata Sandi</Text>
               <Ionicons name="chevron-forward" size={20} color="#ccc" />
             </TouchableOpacity>
+
+            {/* --- TAMBAHAN KHUSUS TEKNISI --- */}
+            {userRole === 'technician' && (
+              <>
+                {/* 1. Menu FAQ (Mengarah ke Info Screen yg sama dgn Pegawai) */}
+                <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Info')}> 
+                  <View style={[styles.iconBox, {backgroundColor: '#e0f2f1'}]}>
+                    <Ionicons name="book-outline" size={20} color="#009688" />
+                  </View>
+                  <Text style={styles.menuText}>FAQ & Panduan</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+
+                {/* 2. Menu Laporan Kinerja (Baru) */}
+                <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('TechPerformance')}>
+                  <View style={[styles.iconBox, {backgroundColor: '#f3e5f5'}]}>
+                    <Ionicons name="stats-chart-outline" size={20} color="#9c27b0" />
+                  </View>
+                  <Text style={styles.menuText}>Laporan Kinerja</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+              </>
+            )}
           </>
         )}
 

@@ -7,8 +7,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_TICKETS, Ticket } from '../../data/mockData';
 import { CurrentUser } from '../../data/Session'; // Cek Role User
+import { useTheme } from '../../context/ThemeContext';
 
 export default function TicketListScreen() {
+  const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const userRole = CurrentUser.role;
 
@@ -80,20 +82,20 @@ export default function TicketListScreen() {
         <Text style={styles.date}>ID: {item.ticketNumber}</Text>
       </View>
       
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+      <Text style={[styles.desc, { color: colors.subText }]} numberOfLines={2}>{item.description}</Text>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: colors.border }]}>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{item.status.toUpperCase().replace('_', ' ')}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        <Ionicons name="chevron-forward" size={20} color={colors.icon} />
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       
       {/* === TAMPILAN MASYARAKAT (GUEST) === */}
       {userRole === 'guest' ? (
@@ -103,7 +105,7 @@ export default function TicketListScreen() {
             <Text style={styles.searchSubLabel}>Masukkan Nomor ID Tiket Anda untuk melihat status terkini.</Text>
             
             <TextInput 
-              style={styles.input}
+              style={[styles.input, { color: '#000' }]} // Input tetap putih backgroundnya di desain ini
               placeholder="Contoh: INC-202312-001"
               value={searchId}
               onChangeText={setSearchId}
@@ -136,23 +138,36 @@ export default function TicketListScreen() {
       ) : (
         // === TAMPILAN PEGAWAI (EMPLOYEE) ===
         <View style={{flex: 1}}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Daftar Tiket Saya</Text>
+          <View style={[styles.header, { backgroundColor: colors.card }]}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Daftar Tiket Saya</Text>
           </View>
 
-          {/* 1. FILTER TIPE (TABS) */}
-          <View style={styles.tabContainer}>
+          <View style={[styles.tabContainer, { backgroundColor: colors.card }]}>
             <TouchableOpacity 
               style={[styles.tabBtn, activeTab === 'incident' && styles.tabBtnActive]} 
               onPress={() => setActiveTab('incident')}
             >
-              <Text style={[styles.tabText, activeTab === 'incident' && styles.tabTextActive]}>Pengaduan</Text>
+              <Text style={[styles.tabText, { color: colors.subText }, activeTab === 'incident' && styles.tabTextActive]}>Pengaduan</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.tabBtn, activeTab === 'request' && styles.tabBtnActive]} 
               onPress={() => setActiveTab('request')}
             >
-              <Text style={[styles.tabText, activeTab === 'request' && styles.tabTextActive]}>Permintaan</Text>
+              <Text style={[styles.tabText, { color: colors.subText }, activeTab === 'request' && styles.tabTextActive]}>Permintaan</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* FILTER ROW */}
+          <View style={[styles.filterRow, { backgroundColor: colors.background }]}>
+            <Text style={[styles.filterLabel, { color: colors.subText }]}>Status:</Text>
+            <TouchableOpacity 
+              style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]} 
+              onPress={() => setShowStatusDropdown(!showStatusDropdown)}
+            >
+              <Text style={[styles.dropdownText, { color: colors.text }]}>
+                {statusFilter === 'All' ? 'Semua Status' : statusFilter.toUpperCase().replace('_', ' ')}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color={colors.text} />
             </TouchableOpacity>
           </View>
 
@@ -211,18 +226,16 @@ export default function TicketListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  
-  // Styles Shared (Card)
+  container: { flex: 1 }, 
   listContent: { padding: 20 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:5 },
+  card: { borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:5 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   typeTag: { backgroundColor: '#e3f2fd', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   typeText: { fontSize: 10, fontWeight: 'bold', color: '#1976d2' },
   date: { fontSize: 12, color: '#888' },
-  title: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 5 },
-  desc: { fontSize: 14, color: '#666', marginBottom: 10 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 },
+  title: { fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
+  desc: { fontSize: 14, marginBottom: 10 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, paddingTop: 10 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   statusText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
 
@@ -237,26 +250,26 @@ const styles = StyleSheet.create({
   
   // Empty State
   emptyState: { alignItems: 'center', marginTop: 50 },
-  emptyText: { color: '#333', fontSize: 16, fontWeight: 'bold', marginTop: 10 },
-  emptySub: { color: '#666', fontSize: 14, marginTop: 5 },
+  emptyText: { fontSize: 16, fontWeight: 'bold', marginTop: 10 },
+  emptySub: { fontSize: 14, marginTop: 5 },
 
   // Styles Pegawai
-  header: { padding: 20, paddingTop: 50, backgroundColor: '#fff' },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
+  header: { padding: 20, paddingTop: 50 },
+  headerTitle: { fontSize: 24, fontWeight: 'bold' },
   
   // Tabs
-  tabContainer: { flexDirection: 'row', padding: 10, backgroundColor: '#fff' },
+  tabContainer: { flexDirection: 'row', padding: 10 },
   tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabBtnActive: { borderBottomColor: '#007AFF' },
-  tabText: { fontSize: 16, color: '#999', fontWeight: '600' },
+  tabText: { fontSize: 16, fontWeight: '600' },
   tabTextActive: { color: '#007AFF' },
 
   // Dropdown Filter
-  filterRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#f0f2f5' },
-  filterLabel: { marginRight: 10, color: '#666' },
-  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#ddd' },
-  dropdownText: { marginRight: 5, fontSize: 14, color: '#333', fontWeight: '500' },
+  filterRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
+  filterLabel: { marginRight: 10 },
+  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  dropdownText: { marginRight: 5, fontSize: 14, fontWeight: '500' },
   
-  dropdownMenu: { position: 'absolute', top: 155, left: 70, backgroundColor: '#fff', width: 200, borderRadius: 8, elevation: 5, zIndex: 10, padding: 5 },
+  dropdownMenu: { position: 'absolute', top: 155, left: 70, width: 200, borderRadius: 8, elevation: 5, zIndex: 10, padding: 5 },
   dropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', justifyContent: 'space-between' },
 });

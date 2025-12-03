@@ -1,9 +1,11 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text } from 'react-native';
+import TechnicianScheduleScreen from '../screens/technician/TechnicianScheduleScreen';
+import { useTheme } from '../context/ThemeContext';
 
 // --- IMPORT COMPONENT ASLI (YANG SUDAH DIBUAT) ---
 import SplashScreen from '../screens/auth/SplashScreen';
@@ -32,6 +34,12 @@ import NotificationScreen from '../screens/common/NotificationScreen';
 import EditProfileScreen from '../screens/common/EditProfileScreen';
 import ChangePasswordScreen from '../screens/common/ChangePasswordScreen';
 import AboutAppScreen from '../screens/common/AboutAppScreen';
+
+// TECHNICIAN
+import TechnicianHomeScreen from '../screens/technician/TechnicianHomeScreen';
+import TechnicianTaskScreen from '../screens/technician/TechnicianTaskScreen';
+import AssetHistoryScreen from '../screens/technician/AssetHistoryScreen';
+import TechnicianPerformanceScreen from '../screens/technician/TechnicianPerformanceScreen';
 
 // --- Placeholder Screens (Untuk halaman yang BELUM dibuat) ---
 const DummyScreen = ({ name }: { name: string }) => (
@@ -79,17 +87,17 @@ function TechnicianTabs() {
           if (route.name === 'Beranda') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Tugas') iconName = focused ? 'briefcase' : 'briefcase-outline';
           else if (route.name === 'Scan QR') iconName = focused ? 'qr-code' : 'qr-code-outline';
-          else if (route.name === 'FAQ') iconName = focused ? 'book' : 'book-outline'; 
+          else if (route.name === 'Jadwal') iconName = focused ? 'calendar' : 'calendar-outline';
           else if (route.name === 'Akun') iconName = focused ? 'person' : 'person-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Beranda" children={() => <DummyScreen name="Home Teknisi" />} />
-      <Tab.Screen name="Tugas" children={() => <DummyScreen name="Worklist Tiket" />} />
+      <Tab.Screen name="Beranda" component={TechnicianHomeScreen} />
+      <Tab.Screen name="Tugas" component={TechnicianTaskScreen} />
       <Tab.Screen name="Scan QR" component={ScanQRScreen} />
-      <Tab.Screen name="FAQ" children={() => <DummyScreen name="Kelola FAQ" />} />
+      <Tab.Screen name="Jadwal" component={TechnicianScheduleScreen} />
       <Tab.Screen name="Akun" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -99,8 +107,11 @@ function TechnicianTabs() {
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
+
+  const { isDarkMode } = useTheme();
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
       <Stack.Navigator initialRouteName="Splash">
         {/* Auth Flow - MENGGUNAKAN COMPONENT ASLI */}
         <Stack.Screen 
@@ -180,9 +191,36 @@ export default function RootNavigator() {
           component={SatisfactionSurveyScreen} 
           options={{ title: 'Survey Kepuasan' }} 
         />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit Profil' }} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Ganti Password' }} />
-        <Stack.Screen name="AboutApp" component={AboutAppScreen} options={{ title: 'Tentang Aplikasi' }} />
+        <Stack.Screen 
+          name="EditProfile" 
+          component={EditProfileScreen} 
+          options={{ title: 'Edit Profil' }} 
+        />
+        <Stack.Screen 
+          name="ChangePassword" 
+          component={ChangePasswordScreen} 
+          options={{ title: 'Ganti Password' }} 
+        />
+        <Stack.Screen 
+          name="AboutApp" 
+          component={AboutAppScreen} 
+          options={{ title: 'Tentang Aplikasi' }} 
+        />
+        <Stack.Screen 
+          name="AssetHistory" 
+          component={AssetHistoryScreen} 
+          options={{ title: 'Info Aset' }} 
+        />
+        <Stack.Screen 
+        name="TechPerformance" 
+          component={TechnicianPerformanceScreen} 
+          options={{ headerShown: false }} 
+        />
+        <Stack.Screen 
+          name="Info" 
+          component={InformationScreen} 
+          options={{ title: 'Pusat Informasi' }} 
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
