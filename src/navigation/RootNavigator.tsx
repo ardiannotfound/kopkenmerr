@@ -132,12 +132,14 @@ export default function RootNavigator() {
         {/* Login masih Dummy dulu karena belum kita buat */}
         <Stack.Screen 
           name="Login" 
-          component={LoginScreen} 
+          component={LoginScreen}
+          options={{ headerShown: false }}  
         />
         <Stack.Screen 
           name="ForgotPassword" 
           component={ForgotPasswordScreen} 
-          options={{ title: 'Lupa Password' }} // Header akan muncul default (bisa di hide kalau mau)
+          options={{ headerShown: false }} 
+           // Header akan muncul default (bisa di hide kalau mau)
         />
         <Stack.Screen 
           name="EmailSent" 
@@ -158,12 +160,12 @@ export default function RootNavigator() {
         <Stack.Screen 
           name="CreateTicket" 
           component={CreateTicketScreen} 
-          options={{ title: 'Buat Tiket' }} // Header default muncul
+          options={{ headerShown: false }}  // Header default muncul
         />
         <Stack.Screen 
           name="Notifications" 
           component={NotificationScreen} 
-          options={{ title: 'Notifikasi' }} // Judul Header
+          options={{ headerShown: false }}  // Judul Header
         />
         
         {/* Main App Flows */}
@@ -174,42 +176,42 @@ export default function RootNavigator() {
         <Stack.Screen 
           name="TicketDetail" 
          component={TicketDetailScreen} // Gantikan DummyScreen dengan ini
-         options={{ title: 'Detail Tiket' }} 
+         options={{ headerShown: false }}  
         />
         <Stack.Screen 
           name="Chat" 
           component={ChatScreen} 
-          options={{ title: 'Chat' }} 
+          options={{ headerShown: false }} 
         />
         <Stack.Screen 
           name="InformationDetail" 
           component={InformationDetailScreen} 
-          options={{ title: 'Detail Informasi' }} 
+          options={{ headerShown: false }} 
         />
         <Stack.Screen 
           name="SatisfactionSurvey" 
           component={SatisfactionSurveyScreen} 
-          options={{ title: 'Survey Kepuasan' }} 
+          options={{ headerShown: false }} 
         />
         <Stack.Screen 
           name="EditProfile" 
           component={EditProfileScreen} 
-          options={{ title: 'Edit Profil' }} 
+         options={{ headerShown: false }} 
         />
         <Stack.Screen 
           name="ChangePassword" 
           component={ChangePasswordScreen} 
-          options={{ title: 'Ganti Password' }} 
+          options={{ headerShown: false }} 
         />
         <Stack.Screen 
           name="AboutApp" 
           component={AboutAppScreen} 
-          options={{ title: 'Tentang Aplikasi' }} 
+          options={{ headerShown: false }} 
         />
         <Stack.Screen 
           name="AssetHistory" 
           component={AssetHistoryScreen} 
-          options={{ title: 'Info Aset' }} 
+          options={{ headerShown: false }} 
         />
         <Stack.Screen 
         name="TechPerformance" 
@@ -219,7 +221,7 @@ export default function RootNavigator() {
         <Stack.Screen 
           name="Info" 
           component={InformationScreen} 
-          options={{ title: 'Pusat Informasi' }} 
+          options={{ headerShown: false }} 
         />
       </Stack.Navigator>
     </NavigationContainer>

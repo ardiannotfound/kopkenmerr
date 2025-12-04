@@ -1,41 +1,162 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Image, 
+  StatusBar 
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import { 
+  widthPercentageToDP as wp, 
+  heightPercentageToDP as hp 
+} from 'react-native-responsive-screen';
+import { RFValue } from 'react-native-responsive-fontsize';
+import { 
+  useFonts, 
+  Poppins_400Regular, 
+  Poppins_500Medium, 
+  Poppins_600SemiBold 
+} from '@expo-google-fonts/poppins';
 
 export default function EmailSentScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
+  let [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+  });
+
+  // Tombol Tutup -> Kembali ke Login
+  const handleClose = () => {
+    navigation.navigate('Login');
+  };
+
+  if (!fontsLoaded) return null;
+
   return (
     <View style={styles.container}>
-      <Ionicons name="mail-open-outline" size={80} color="#007AFF" />
-      <Text style={styles.title}>Email Terkirim!</Text>
-      <Text style={styles.subtitle}>
-        Silakan periksa kotak masuk email Anda. Klik tautan di dalamnya untuk membuat kata sandi baru.
-      </Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Tombol Simulasi untuk keperluan testing */}
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={() => navigation.navigate('ResetPassword')}
-      >
-        <Text style={styles.buttonText}>[Simulasi] Klik Link di Email</Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.secondaryButtonText}>Kembali ke Login</Text>
-      </TouchableOpacity>
+      {/* 1. AREA GAMBAR (Mirip Role Selection) */}
+      <View style={styles.imageContainer}>
+        <Image 
+          // Pastikan file ini ada di folder assets
+          source={require('../../../assets/email-sent.png')} 
+          style={styles.image}
+        />
+      </View>
+
+      {/* 2. AREA KONTEN (Teks & Tombol) */}
+      <View style={styles.contentContainer}>
+        
+        {/* Title & Subtitle */}
+        <View style={styles.textWrapper}>
+          <Text style={styles.title}>Email Reset Terkirim</Text>
+          <Text style={styles.subtitle}>
+            Kami telah mengirimkan link untuk mengatur ulang kata sandi ke email Anda. 
+            Silakan periksa inbox atau folder spam.
+          </Text>
+        </View>
+
+        {/* Tombol Tutup */}
+        <View style={styles.buttonWrapper}>
+          <TouchableOpacity 
+            style={styles.btnPrimary} 
+            onPress={handleClose}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnText}>Tutup</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tombol Simulasi (Opsional: Hanya untuk testing developer agar bisa lanjut flow) */}
+        {/* Bisa dihapus nanti saat production */}
+        <TouchableOpacity 
+          style={{ marginTop: 20, alignSelf: 'center' }} 
+          onPress={() => navigation.navigate('ResetPassword')}
+        >
+          <Text style={{ color: '#ccc', fontSize: 12 }}>[DEV: Buka Link Reset]</Text>
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 30, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#333', marginTop: 20, marginBottom: 10 },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 40 },
-  button: { backgroundColor: '#28a745', padding: 15, borderRadius: 8, width: '100%', alignItems: 'center', marginBottom: 10 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  secondaryButton: { padding: 15, width: '100%', alignItems: 'center' },
-  secondaryButtonText: { color: '#007AFF', fontSize: 16, fontWeight: '600' },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  
+  // --- IMAGE SECTION (50% Layar) ---
+  imageContainer: {
+    height: hp('50%'),
+    width: wp('100%'),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: hp('5%'),
+  },
+  image: {
+    width: wp('80%'),
+    height: hp('40%'),
+    resizeMode: 'contain',
+  },
+
+  // --- CONTENT SECTION ---
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: wp('7%'),
+    justifyContent: 'flex-start',
+  },
+
+  // Teks
+  textWrapper: {
+    alignItems: 'center',
+    marginBottom: hp('5%'),
+  },
+  title: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: RFValue(24), 
+    color: '#263238', // Warna Request
+    marginBottom: hp('1.5%'),
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontFamily: 'Poppins_500Medium', 
+    fontSize: RFValue(14), 
+    color: '#555657', // Warna Request
+    textAlign: 'center',
+    lineHeight: RFValue(22), // Spasi antar baris agar nyaman dibaca
+  },
+
+  // Tombol
+  buttonWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  
+  btnPrimary: {
+    backgroundColor: '#053F5C', // Warna Biru Tua
+    borderRadius: 21, // Corner Radius 21 (Sesuai Request)
+    paddingVertical: hp('1.5%'),
+    paddingHorizontal: wp('10%'), // Lebar tombol proporsional
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%', // Full width atau sesuaikan
+    elevation: 2, 
+    shadowColor: '#053F5C', 
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  btnText: {
+    fontFamily: 'Poppins_500Medium', // Medium
+    fontSize: RFValue(16),
+    color: '#FFFFFF',
+  },
 });

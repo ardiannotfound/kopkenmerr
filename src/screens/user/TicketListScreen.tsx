@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_TICKETS, Ticket } from '../../data/mockData';
-import { CurrentUser } from '../../data/Session'; // Cek Role User
+import { CurrentUser } from '../../data/Session';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function TicketListScreen() {
@@ -14,51 +14,38 @@ export default function TicketListScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const userRole = CurrentUser.role;
 
-  // --- STATE UNTUK MASYARAKAT (GUEST) ---
+  // --- STATE ---
   const [searchId, setSearchId] = useState('');
   const [guestSearchResult, setGuestSearchResult] = useState<Ticket[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [activeTab, setActiveTab] = useState<'incident' | 'request'>('incident');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-  // --- STATE UNTUK PEGAWAI (EMPLOYEE) ---
-  const [activeTab, setActiveTab] = useState<'incident' | 'request'>('incident'); // Filter Tipe
-  const [statusFilter, setStatusFilter] = useState('All'); // Filter Status
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false); // Toggle Dropdown
-
-  // === LOGIC MASYARAKAT: SEARCH BY ID ===
+  // --- LOGIC GUEST ---
   const handleGuestSearch = () => {
     if (!searchId.trim()) {
       Alert.alert("Error", "Mohon masukkan Nomor Tiket.");
       return;
     }
-    
     setHasSearched(true);
-    // Filter Exact Match (Harus sama persis dengan ticketNumber)
     const result = MOCK_TICKETS.filter(
       t => t.ticketNumber.toLowerCase() === searchId.toLowerCase().trim()
     );
     setGuestSearchResult(result);
   };
 
-  // === LOGIC PEGAWAI: FILTER LIST ===
+  // --- LOGIC EMPLOYEE ---
   const getEmployeeData = () => {
     let data = MOCK_TICKETS;
-
-    // 1. Filter User (Tampilkan tiket milik user ini saja)
-    // Di real app: data = data.filter(t => t.requesterId === CurrentUser.userId);
-    // Tapi untuk MVP Mock kita tampilkan semua biar kelihatan datanya
-
-    // 2. Filter Tipe (Pengaduan vs Permintaan)
+    // data = data.filter(t => t.requesterId === CurrentUser.userId); // Uncomment for real app
     data = data.filter(t => t.type === activeTab);
-
-    // 3. Filter Status (Dropdown)
     if (statusFilter !== 'All') {
       data = data.filter(t => t.status === statusFilter);
     }
-
     return data;
   };
 
-  // Helper Warna Status
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return '#ff9800'; 
@@ -69,10 +56,10 @@ export default function TicketListScreen() {
     }
   };
 
-  // --- RENDER ITEM TIKET ---
+  // --- RENDER ITEM ---
   const renderItem = ({ item }: { item: Ticket }) => (
     <TouchableOpacity 
-      style={styles.card} 
+      style={[styles.card, { backgroundColor: colors.card }]} 
       onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })}
     >
       <View style={styles.cardHeader}>
@@ -105,7 +92,7 @@ export default function TicketListScreen() {
             <Text style={styles.searchSubLabel}>Masukkan Nomor ID Tiket Anda untuk melihat status terkini.</Text>
             
             <TextInput 
-              style={[styles.input, { color: '#000' }]} // Input tetap putih backgroundnya di desain ini
+              style={[styles.input, { color: '#000' }]} 
               placeholder="Contoh: INC-202312-001"
               value={searchId}
               onChangeText={setSearchId}
@@ -118,7 +105,6 @@ export default function TicketListScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* HASIL PENCARIAN GUEST */}
           <FlatList
             data={guestSearchResult}
             keyExtractor={item => item.id}
@@ -127,9 +113,9 @@ export default function TicketListScreen() {
             ListEmptyComponent={
               hasSearched ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="close-circle-outline" size={50} color="#d32f2f" />
-                  <Text style={styles.emptyText}>Tiket tidak ditemukan.</Text>
-                  <Text style={styles.emptySub}>Pastikan ID Tiket yang Anda masukkan benar.</Text>
+                  <Ionicons name="close-circle-outline" size={50} color={colors.subText} />
+                  <Text style={[styles.emptyText, { color: colors.text }]}>Tiket tidak ditemukan.</Text>
+                  <Text style={[styles.emptySub, { color: colors.subText }]}>Pastikan ID Tiket benar.</Text>
                 </View>
               ) : null
             }
@@ -157,7 +143,7 @@ export default function TicketListScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* FILTER ROW */}
+          {/* FILTER ROW (Hanya 1 Kali Saja) */}
           <View style={[styles.filterRow, { backgroundColor: colors.background }]}>
             <Text style={[styles.filterLabel, { color: colors.subText }]}>Status:</Text>
             <TouchableOpacity 
@@ -171,33 +157,19 @@ export default function TicketListScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* 2. FILTER STATUS (CUSTOM DROPDOWN) */}
-          <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Status:</Text>
-            <TouchableOpacity 
-              style={styles.dropdownTrigger} 
-              onPress={() => setShowStatusDropdown(!showStatusDropdown)}
-            >
-              <Text style={styles.dropdownText}>
-                {statusFilter === 'All' ? 'Semua Status' : statusFilter.toUpperCase().replace('_', ' ')}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color="#333" />
-            </TouchableOpacity>
-          </View>
-
-          {/* DROPDOWN MENU (Muncul jika ditoggle) */}
+          {/* DROPDOWN MENU (Perbaikan Warna Dark Mode) */}
           {showStatusDropdown && (
-            <View style={styles.dropdownMenu}>
+            <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {['All', 'pending', 'in_progress', 'resolved', 'closed'].map((status) => (
                 <TouchableOpacity 
                   key={status} 
-                  style={styles.dropdownItem}
+                  style={[styles.dropdownItem, { borderBottomColor: colors.border }]}
                   onPress={() => {
                     setStatusFilter(status);
                     setShowStatusDropdown(false);
                   }}
                 >
-                  <Text style={{color: statusFilter === status ? '#007AFF' : '#333'}}>
+                  <Text style={{color: statusFilter === status ? '#007AFF' : colors.text}}>
                     {status === 'All' ? 'Semua Status' : status.toUpperCase().replace('_', ' ')}
                   </Text>
                   {statusFilter === status && <Ionicons name="checkmark" size={16} color="#007AFF" />}
@@ -214,8 +186,8 @@ export default function TicketListScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Ionicons name="file-tray-outline" size={60} color="#ccc" />
-                <Text style={styles.emptyText}>Belum ada tiket.</Text>
+                <Ionicons name="file-tray-outline" size={60} color={colors.subText} />
+                <Text style={[styles.emptyText, { color: colors.text }]}>Belum ada tiket.</Text>
               </View>
             }
           />
@@ -257,19 +229,17 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingTop: 50 },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   
-  // Tabs
   tabContainer: { flexDirection: 'row', padding: 10 },
   tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabBtnActive: { borderBottomColor: '#007AFF' },
   tabText: { fontSize: 16, fontWeight: '600' },
   tabTextActive: { color: '#007AFF' },
 
-  // Dropdown Filter
   filterRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
   filterLabel: { marginRight: 10 },
   dropdownTrigger: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   dropdownText: { marginRight: 5, fontSize: 14, fontWeight: '500' },
   
-  dropdownMenu: { position: 'absolute', top: 155, left: 70, width: 200, borderRadius: 8, elevation: 5, zIndex: 10, padding: 5 },
-  dropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', justifyContent: 'space-between' },
+  dropdownMenu: { position: 'absolute', top: 155, left: 70, width: 200, borderRadius: 8, elevation: 5, zIndex: 10, padding: 5, borderWidth: 1 },
+  dropdownItem: { padding: 12, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between' },
 });
