@@ -62,6 +62,11 @@ export default function LoginScreen() {
     navigation.navigate('ForgotPassword'); 
   };
 
+  // Fungsi Kembali ke Role Selection
+  const handleBack = () => {
+    navigation.goBack(); // Kembali ke halaman sebelumnya (RoleSelection)
+  };
+
   if (!fontsLoaded) return null;
 
   return (
@@ -71,7 +76,6 @@ export default function LoginScreen() {
       <AuthHeader />
 
       {/* FORM CONTAINER */}
-      {/* Tambahkan zIndex agar form tampil di atas bayangan header */}
       <View style={[styles.formContainer, { zIndex: 999 }]}>
         <ScrollView 
           showsVerticalScrollIndicator={false}
@@ -83,24 +87,23 @@ export default function LoginScreen() {
             <Text style={styles.subtitleLogin}>Silahkan login untuk melanjutkan</Text>
           </View>
 
-          {/* --- INPUT USERNAME --- */}
+          {/* INPUT USERNAME */}
           <Text style={styles.label}>Email / Username</Text>
           <View style={styles.inputBox}>
             <TextInput
-              style={styles.input} // flex: 1 ada disini
+              style={styles.input}
               placeholder="Masukkan Email Anda"
               placeholderTextColor="#ADB5BD"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
             />
-            {/* WRAPPER ICON: Memberi ruang pasti untuk ikon */}
             <View style={styles.iconWrapper}>
               <Ionicons name="person-outline" size={22} color="#555657" />
             </View>
           </View>
 
-          {/* --- INPUT PASSWORD --- */}
+          {/* INPUT PASSWORD */}
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputBox}>
             <TextInput
@@ -124,13 +127,18 @@ export default function LoginScreen() {
             <Text style={styles.forgotPassText}>Lupa Password?</Text>
           </TouchableOpacity>
 
-          {/* TOMBOL LOGIN */}
+          {/* TOMBOL LOGIN (Margin Auto mendorong ke bawah) */}
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
             <Text style={styles.loginButtonText}>LOGIN</Text>
           </TouchableOpacity>
 
+          {/* TOMBOL KEMBALI (Baru) */}
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Text style={styles.backButtonText}>Kembali</Text>
+          </TouchableOpacity>
+
           {/* Spacer */}
-          <View style={{ height: hp('5%') }} />
+          <View style={{ height: hp('3%') }} />
 
         </ScrollView>
       </View>
@@ -169,8 +177,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(12),
     color: '#053F5C',
   },
-  
-  // LABEL
   label: {
     fontFamily: 'Poppins_500Medium',
     fontSize: RFValue(14),
@@ -178,8 +184,6 @@ const styles = StyleSheet.create({
     marginBottom: hp('1%'),
     textAlign: 'left',
   },
-
-  // BOX INPUT (Row)
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -187,29 +191,25 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 1,
     borderColor: '#E5E2E2',
-    paddingLeft: 15, // Padding kiri untuk teks
-    paddingRight: 0, // Padding kanan untuk icon
+    paddingLeft: 15, 
+    paddingRight: 0,
     height: hp('6.5%'), 
     marginBottom: hp('2.5%'),
     overflow: 'hidden',
   },
-
-  // TEXT INPUT
   input: {
-    flex: 1, // Mengambil sisa ruang
+    flex: 1, 
     fontFamily: 'Poppins_400Regular',
     fontSize: RFValue(14),
     color: '#333',
-    height: '100%', // Pastikan tinggi penuh agar mudah diklik
+    height: '100%', 
   },
-
-  // ICON WRAPPER (PENTING AGAR TIDAK HILANG)
   iconWrapper: {
-    width: 30, // Lebar pasti untuk area ikon
+    width: 40, // Lebar area ikon
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   forgotPassContainer: {
     alignItems: 'flex-end',
     marginBottom: hp('2%'),
@@ -231,12 +231,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
-    marginTop: 'auto', 
+    marginTop: 'auto', // Dorong ke bawah
+    marginBottom: hp('2%'), // Jarak dengan tombol kembali
   },
   loginButtonText: {
     fontFamily: 'Inter_700Bold',
     fontSize: RFValue(16),
     color: '#FFFFFF',
     letterSpacing: 1,
+  },
+
+  // STYLE BARU: TOMBOL KEMBALI
+  backButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginBottom: hp('1%'),
+  },
+  backButtonText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: RFValue(14),
+    color: '#555657', // Abu-abu agar tidak terlalu mencolok (hierarki sekunder)
   },
 });

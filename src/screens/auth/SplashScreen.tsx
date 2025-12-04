@@ -61,7 +61,7 @@ export default function SplashScreen() {
       setTimeout(() => {
         // PERBAIKAN 1: Geser Logo tidak terlalu jauh (Cukup 23% layar)
         // Sebelumnya 0.32 (terlalu pinggir), sekarang 0.23 (lebih tengah)
-        logoTranslateX.value = withTiming(-width * 0.23, {
+        logoTranslateX.value = withTiming(-width * 0.32, {
           duration: 1800, 
           easing: Easing.bezier(0.25, 0.1, 0.25, 1), 
         });
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     left: '50%', 
     // PERBAIKAN 2: Margin disesuaikan agar nempel pas di kanan logo baru
     // Tadinya -17% (terlalu kiri), sekarang -5% (pas di tengah kanan)
-    marginLeft: -wp('5%'), 
+    marginLeft: -wp('17%'), 
     width: wp('65%'), 
   },
 

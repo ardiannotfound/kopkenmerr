@@ -1,165 +1,238 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { 
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar 
+} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { 
+  widthPercentageToDP as wp, 
+  heightPercentageToDP as hp 
+} from 'react-native-responsive-screen';
+import { RFValue } from 'react-native-responsive-fontsize';
+import { 
+  useFonts, 
+  Poppins_400Regular, 
+  Poppins_500Medium, 
+  Poppins_600SemiBold 
+} from '@expo-google-fonts/poppins';
+
+// Import Data & Components
 import { MOCK_USERS, MOCK_TICKETS } from '../../data/mockData';
 import { useTheme } from '../../context/ThemeContext';
+import CustomHeader from '../../components/CustomHeader';
 
-// Definisi tipe parameter yang diterima halaman ini
 type HomeScreenRouteProp = RouteProp<{ params: { userRole: string; userId?: string } }, 'params'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<HomeScreenRouteProp>();
-
-  const { colors, isDarkMode, toggleTheme } = useTheme();
   
-  // Ambil role & userId dari parameter navigasi (dari Login/RoleSelection)
+  // 1. Theme & Colors (Untuk Dark Mode)
+  const { colors, isDarkMode } = useTheme();
+
   const { userRole, userId } = route.params || { userRole: 'guest' };
-  
   const [userName, setUserName] = useState('Masyarakat');
+  const [userUnit, setUserUnit] = useState('Umum');
 
-  // Cari nama user jika dia Pegawai
+  let [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+  });
+
   useEffect(() => {
     if (userRole === 'employee' && userId) {
       const user = MOCK_USERS.find(u => u.id === userId);
-      if (user) setUserName(user.name);
+      if (user) {
+        setUserName(user.name);
+        setUserUnit(user.opd || 'Pegawai Pemkot');
+      }
     } else {
-      setUserName('Tamu (Guest)');
+      setUserName('Tamu');
+      setUserUnit('Masyarakat Umum');
     }
   }, [userRole, userId]);
 
-  // --- [PERBAIKAN] LOGIC INI TADI HILANG ---
-  const activeTicketCount = MOCK_TICKETS.filter(ticket => 
-    ticket.requesterId === userId && ticket.status !== 'closed' && ticket.status !== 'resolved'
-  ).length;
-  // ------------------------------------------
-
-  // --- MENU ACTIONS ---
-  const goToIncidentForm = () => {
-    navigation.navigate('CreateTicket', { type: 'incident', userRole, userId });
+  // --- LOGIC HITUNG STATISTIK ---
+  const myTickets = MOCK_TICKETS.filter(t => t.requesterId === userId);
+  
+  const stats = {
+    waiting: myTickets.filter(t => ['pending', 'waiting_seksi', 'waiting_bidang'].includes(t.status)).length,
+    process: myTickets.filter(t => ['in_progress', 'ready', 'assigned'].includes(t.status)).length,
+    done: myTickets.filter(t => ['resolved', 'closed'].includes(t.status)).length,
   };
 
-  const goToRequestForm = () => {
-    navigation.navigate('CreateTicket', { type: 'request', userRole, userId });
-  };
+  const goToIncidentForm = () => navigation.navigate('CreateTicket', { type: 'incident', userRole, userId });
+  const goToRequestForm = () => navigation.navigate('CreateTicket', { type: 'request', userRole, userId });
+  const goToNotifications = () => navigation.navigate('Notifications');
 
-  const goToNotifications = () => {
-    navigation.navigate('Notifications');
-  };
+  if (!fontsLoaded) return null;
+
+  // Render Card Ringkasan
+  const renderSummaryCard = (count: number, label: string) => (
+    <View style={[styles.summaryCard, { backgroundColor: isDarkMode ? '#333' : 'rgba(196, 196, 196, 0.42)' }]}>
+      {/* KIRI: ANGKA */}
+      <View style={styles.summaryCountContainer}>
+        <Text style={[styles.summaryCount, { color: isDarkMode ? '#FFF' : 'rgba(0, 0, 0, 0.75)' }]}>
+          {count}
+        </Text>
+      </View>
+      
+      {/* TENGAH: GARIS PEMBATAS */}
+      <View style={styles.summaryDivider} />
+      
+      {/* KANAN: LABEL */}
+      <View style={styles.summaryLabelContainer}>
+        <Text style={[styles.summaryLabel, { color: isDarkMode ? '#FFF' : 'rgba(0, 0, 0, 0.75)' }]}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Halo, Selamat Datang</Text>
-          {/* Warna Text Dinamis */}
-          <Text style={[styles.name, { color: colors.text }]}>{userName}</Text>
-        </View>
-        
-        {/* ROW UNTUK TOMBOL ACTION (THEME + NOTIF) */}
-        <View style={{ flexDirection: 'row', gap: 15 }}>
+      <StatusBar barStyle="light-content" backgroundColor="#053F5C" />
+
+      {/* 1. HEADER */}
+      <CustomHeader 
+        type="home"
+        userName={userName}
+        userUnit={userUnit}
+        onNotificationPress={goToNotifications}
+      />
+
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
+        <View style={styles.content}>
           
-          {/* TOMBOL DARK MODE */}
-          <TouchableOpacity onPress={toggleTheme}>
-            <Ionicons 
-              name={isDarkMode ? "sunny" : "moon"} 
-              size={24} 
-              color={colors.icon} 
-            />
-          </TouchableOpacity>
+          {/* 2. MENU LAYANAN */}
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? colors.text : '#053F5C' }]}>
+            Menu Layanan
+          </Text>
 
-          {/* TOMBOL NOTIFIKASI */}
-          <TouchableOpacity onPress={goToNotifications}>
-            <Ionicons name="notifications-outline" size={24} color={colors.icon} />
-          </TouchableOpacity>
-
-        </View>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {/* BANNER INFO (Opsional) */}
-        <View style={styles.banner}>
-          <Text style={styles.bannerTitle}>Pusat Bantuan IT</Text>
-          <Text style={styles.bannerDesc}>Laporkan kendala atau ajukan layanan dengan mudah.</Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Layanan Utama</Text>
-        
-        <View style={styles.menuGrid}>
-          {/* MENU 1: PENGADUAN (Muncul untuk SEMUA user) */}
-          <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.card }]} onPress={goToIncidentForm}>
-            <View style={[styles.iconBox, { backgroundColor: '#ffebee' }]}>
-              <Ionicons name="warning" size={32} color="#d32f2f" />
-            </View>
-            {/* Flex 1 agar teks tidak nabrak */}
-            <View style={{ flex: 1 }}> 
-              <Text style={[styles.menuTitle, { color: colors.text }]}>Buat Pengaduan</Text>
-              <Text style={styles.menuDesc}>Laporkan kerusakan atau insiden IT.</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* MENU 2: PERMINTAAN (HANYA untuk PEGAWAI) */}
-          {userRole === 'employee' && (
-            <TouchableOpacity style={[styles.menuCard, { backgroundColor: colors.card }]} onPress={goToRequestForm}>
-              <View style={[styles.iconBox, { backgroundColor: '#e3f2fd' }]}>
-                <Ionicons name="desktop" size={32} color="#1976d2" />
+          <View style={styles.menuRow}>
+            {/* Tombol Pengaduan (Selalu Ada) */}
+            <TouchableOpacity style={styles.menuItem} onPress={goToIncidentForm}>
+              <View style={styles.iconBox}>
+                <Ionicons name="alert-circle-outline" size={RFValue(28)} color="#053F5C" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.menuTitle, { color: colors.text }]}>Permintaan Layanan</Text>
-                <Text style={styles.menuDesc}>Akses VPN, Email, Perangkat Baru.</Text>
-              </View>
+              <Text style={[styles.menuText, { color: isDarkMode ? colors.text : '#053F5C' }]}>
+                Pengaduan
+              </Text>
             </TouchableOpacity>
-          )}
-        </View>
 
-        {/* SECTION TAMBAHAN UNTUK PEGAWAI (Contoh) */}
-        {userRole === 'employee' && (
-          <View style={{ marginTop: 20 }}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Statistik Saya</Text>
-            <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-              <Text style={{ fontSize: 16, fontWeight: '500', color: colors.text }}>
-                {activeTicketCount} Tiket sedang diproses
-              </Text>
-              <Text style={{ fontSize: 12, color: '#666', marginTop: 5 }}>
-                Pantau progresnya di menu Lacak.
-              </Text>
-            </View>
+            {/* Tombol Permintaan (Hanya Pegawai) */}
+            {userRole === 'employee' && (
+              <TouchableOpacity style={styles.menuItem} onPress={goToRequestForm}>
+                <View style={styles.iconBox}>
+                  <Ionicons name="document-text-outline" size={RFValue(28)} color="#053F5C" />
+                </View>
+                <Text style={[styles.menuText, { color: isDarkMode ? colors.text : '#053F5C' }]}>
+                  Permintaan
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-        )}
+
+          {/* 3. RINGKASAN LAYANAN (Hanya muncul jika bukan Tamu) */}
+          {userRole !== 'guest' && (
+            <>
+              <Text style={[styles.sectionTitle, { marginTop: hp('4%'), color: isDarkMode ? colors.text : '#053F5C' }]}>
+                Ringkasan Layanan
+              </Text>
+
+              <View style={styles.summaryContainer}>
+                {renderSummaryCard(stats.waiting, 'Menunggu Persetujuan')}
+                {renderSummaryCard(stats.process, 'Diproses')}
+                {renderSummaryCard(stats.done, 'Selesai')}
+              </View>
+            </>
+          )}
+
+        </View>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 50 },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, marginBottom: 20,
+  container: {
+    flex: 1,
   },
-  greeting: { fontSize: 14, color: '#888' },
-  name: { fontSize: 20, fontWeight: 'bold'},
-  content: { flex: 1, paddingHorizontal: 20 },
-  banner: {
-    backgroundColor: '#007AFF', borderRadius: 12, padding: 20, marginBottom: 25,
+  content: {
+    paddingHorizontal: wp('6%'),
+    paddingTop: hp('3%'),
   },
-  bannerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-  bannerDesc: { color: '#e3f2fd', fontSize: 14 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
-  menuGrid: { flexDirection: 'column', gap: 15 },
-  menuCard: {
-    backgroundColor: '#fff', borderRadius: 12, padding: 15,
-    flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2,
+  sectionTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: RFValue(16),
+    marginBottom: hp('2%'),
+    textAlign: 'left',
+  },
+
+  // --- MENU LAYANAN ---
+  menuRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around', // Agar center jika cuma 1, atau spread jika 2
+    alignItems: 'flex-start',
+  },
+  menuItem: {
+    alignItems: 'center',
+    width: wp('30%'),
   },
   iconBox: {
-    width: 60, height: 60, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 15,
+    width: wp('18%'), // Responsif ~ 48x48 tergantung layar
+    height: wp('18%'),
+    borderRadius: 15, // Agak kotak tumpul
+    backgroundColor: 'rgba(51, 124, 173, 0.4)', // #337CAD 40%
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  menuTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 2 },
-  menuDesc: { fontSize: 12, color: '#666', flex: 1 }, 
-  statCard: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginTop: 10 },
+  menuText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: RFValue(12),
+    textAlign: 'center',
+  },
+
+  // --- RINGKASAN LAYANAN ---
+  summaryContainer: {
+    gap: hp('2%'),
+  },
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: hp('2%'),
+    paddingHorizontal: wp('5%'),
+    borderRadius: 17,
+    // Background diatur dynamic di inline style
+  },
+  summaryCountContainer: {
+    width: wp('10%'),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryCount: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: RFValue(20),
+    // Color dynamic
+  },
+  summaryDivider: {
+    width: 2, // Weight 2
+    height: '100%',
+    backgroundColor: '#053F5C',
+    marginHorizontal: wp('4%'),
+  },
+  summaryLabelContainer: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: RFValue(14),
+    // Color dynamic
+  },
 });
