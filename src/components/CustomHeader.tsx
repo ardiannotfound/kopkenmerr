@@ -15,9 +15,9 @@ import { Poppins_600SemiBold } from '@expo-google-fonts/poppins';
 
 interface CustomHeaderProps {
   type: 'home' | 'page';
-  userName?: string; // Untuk Home
+  userName?: string; 
   userUnit?: string;
-  title?: string;    // Untuk Page
+  title?: string;    
   onNotificationPress?: () => void;
 }
 
@@ -29,9 +29,8 @@ export default function CustomHeader({
 }: CustomHeaderProps) {
   
   const navigation = useNavigation();
-  const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
 
-  // Load Fonts
   let [fontsLoaded] = useFonts({
     Inter_600SemiBold,
     Poppins_600SemiBold,
@@ -71,10 +70,6 @@ export default function CustomHeader({
             <Ionicons 
               name={isDarkMode ? "sunny" : "moon"} 
               size={RFValue(18)} 
-              // Icon mengikuti tema (Hitam/Putih) atau Putih fix sesuai selera? 
-              // Request awal: "putih/hitam mengikuti darkmode", tapi karena background header fix gambar,
-              // biasanya icon tetap Putih atau warna kontras gambar. 
-              // Disini saya set Putih agar aman di atas background D9D9D9 39%.
               color="#FFFFFF" 
             />
           </TouchableOpacity>
@@ -96,7 +91,6 @@ export default function CustomHeader({
       {type === 'page' && (
         <View style={styles.bottomRow}>
           
-          {/* Back Button (Putih Transparan) */}
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
             style={styles.backButtonCircle}
@@ -105,7 +99,6 @@ export default function CustomHeader({
             <Ionicons name="chevron-back" size={RFValue(20)} color="#053F5C" />
           </TouchableOpacity>
 
-          {/* Page Title */}
           <Text style={styles.pageTitle} numberOfLines={1}>
             {title}
           </Text>
@@ -126,16 +119,16 @@ const styles = StyleSheet.create({
   // Container Utama
   headerContainer: {
     width: wp('100%'),
-    // Tinggi default untuk Home (Cukup 1 baris)
+    // Tinggi default untuk Home
     height: hp('15%'), 
-    paddingTop: hp('6%'), // Kompensasi StatusBar
+    paddingTop: hp('3%'), 
     paddingHorizontal: wp('5%'),
-    justifyContent: 'flex-start', // Mulai dari atas
+    justifyContent: 'flex-start', 
   },
   
-  // Jika tipe Page, header lebih tinggi untuk memuat 2 baris
+  // PERBAIKAN: Tinggi header Page ditambah sedikit agar muat
   headerPageHeight: {
-    height: hp('18%'), 
+    height: hp('20%'), // Naik dari 18% ke 20%
   },
 
   // --- STYLE BARIS 1 ---
@@ -144,17 +137,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: hp('1.5%'), // Jarak ke baris bawah
+    marginBottom: hp('1.5%'),
   },
   
   greetingContainer: {
-    flex: 1, // Mengambil ruang kiri
+    flex: 1, 
     justifyContent: 'center',
   },
   greetingText: {
     fontFamily: 'Inter_600SemiBold',
     fontSize: RFValue(14),
-    color: '#F5F5F5', // Sesuai Request
+    color: '#F5F5F5', 
   },
 
   rightContainer: {
@@ -162,12 +155,11 @@ const styles = StyleSheet.create({
     gap: wp('3%'),
   },
 
-  // Tombol Bundar Kanan (Dark Mode & Notif)
   circleButton: {
-    width: wp('9%'),  // Responsif ~34px
-    height: wp('9%'), // Responsif ~34px
-    borderRadius: wp('4.5%'), // Setengah width = Bundar
-    backgroundColor: 'rgba(217, 217, 217, 0.39)', // D9D9D9 39%
+    width: wp('9%'),  
+    height: wp('9%'), 
+    borderRadius: wp('4.5%'), 
+    backgroundColor: 'rgba(217, 217, 217, 0.39)', 
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -187,23 +179,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
+    // PERBAIKAN: Menambahkan margin top agar turun ke bawah
+    marginTop: hp('2%'), 
   },
 
-  // Tombol Back (Putih Transparan)
   backButtonCircle: {
     width: wp('9%'),
     height: wp('9%'),
     borderRadius: wp('4.5%'),
-    backgroundColor: 'rgba(255, 255, 255, 0.63)', // FFFFFF 63%
+    backgroundColor: 'rgba(255, 255, 255, 0.63)', 
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: wp('3%'), // Jarak ke Judul
+    marginRight: wp('3%'), 
   },
 
   pageTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(18),
-    color: '#FFFFFF', // 100% White
-    flex: 1, // Agar teks tidak nabrak kanan jika panjang
+    // PERBAIKAN: Font Size diperbesar
+    fontSize: RFValue(25), // Naik dari 18 ke 22
+    color: '#FFFFFF', 
+    flex: 1, 
   },
 });

@@ -139,7 +139,7 @@ export default function HomeScreen() {
           </View>
 
           {/* 3. RINGKASAN LAYANAN (Hanya muncul jika bukan Tamu) */}
-          {userRole !== 'guest' && (
+          
             <>
               <Text style={[styles.sectionTitle, { marginTop: hp('4%'), color: isDarkMode ? colors.text : '#053F5C' }]}>
                 Ringkasan Layanan
@@ -151,7 +151,7 @@ export default function HomeScreen() {
                 {renderSummaryCard(stats.done, 'Selesai')}
               </View>
             </>
-          )}
+          
 
         </View>
       </ScrollView>
