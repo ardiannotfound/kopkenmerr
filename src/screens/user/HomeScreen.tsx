@@ -10,12 +10,6 @@ import {
   heightPercentageToDP as hp 
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold 
-} from '@expo-google-fonts/poppins';
 
 // Import Data & Components
 import { MOCK_USERS, MOCK_TICKETS } from '../../data/mockData';
@@ -28,18 +22,13 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<HomeScreenRouteProp>();
   
-  // 1. Theme & Colors (Untuk Dark Mode)
   const { colors, isDarkMode } = useTheme();
 
   const { userRole, userId } = route.params || { userRole: 'guest' };
   const [userName, setUserName] = useState('Masyarakat');
   const [userUnit, setUserUnit] = useState('Umum');
 
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-  });
+  // CLEAN CODE: Hapus useFonts lokal
 
   useEffect(() => {
     if (userRole === 'employee' && userId) {
@@ -54,7 +43,7 @@ export default function HomeScreen() {
     }
   }, [userRole, userId]);
 
-  // --- LOGIC HITUNG STATISTIK ---
+  // --- LOGIC STATISTIK ---
   const myTickets = MOCK_TICKETS.filter(t => t.requesterId === userId);
   
   const stats = {
@@ -63,26 +52,25 @@ export default function HomeScreen() {
     done: myTickets.filter(t => ['resolved', 'closed'].includes(t.status)).length,
   };
 
-  const goToIncidentForm = () => navigation.navigate('CreateTicket', { type: 'incident', userRole, userId });
-  const goToRequestForm = () => navigation.navigate('CreateTicket', { type: 'request', userRole, userId });
+  const goToIncidentForm = () => navigation.navigate('CreateIncident', { userRole, userId });
+  const goToRequestForm = () => navigation.navigate('CreateRequest', { userRole, userId });
   const goToNotifications = () => navigation.navigate('Notifications');
 
-  if (!fontsLoaded) return null;
+  const incidentColor = isDarkMode ? '#FFFFFF' : '#053F5C'; // Merah Pengaduan
+  const requestColor = isDarkMode ? '#FFFFFF' : '#053F5C';  // Biru Permintaan
+
+  // Background Icon Box (Lebih transparan di dark mode biar gak nabrak)
+  const iconBg = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(51, 124, 173, 0.2)'; 
 
   // Render Card Ringkasan
   const renderSummaryCard = (count: number, label: string) => (
     <View style={[styles.summaryCard, { backgroundColor: isDarkMode ? '#333' : 'rgba(196, 196, 196, 0.42)' }]}>
-      {/* KIRI: ANGKA */}
       <View style={styles.summaryCountContainer}>
         <Text style={[styles.summaryCount, { color: isDarkMode ? '#FFF' : 'rgba(0, 0, 0, 0.75)' }]}>
           {count}
         </Text>
       </View>
-      
-      {/* TENGAH: GARIS PEMBATAS */}
       <View style={styles.summaryDivider} />
-      
-      {/* KANAN: LABEL */}
       <View style={styles.summaryLabelContainer}>
         <Text style={[styles.summaryLabel, { color: isDarkMode ? '#FFF' : 'rgba(0, 0, 0, 0.75)' }]}>
           {label}
@@ -115,30 +103,32 @@ export default function HomeScreen() {
           </Text>
 
           <View style={styles.menuRow}>
-            {/* Tombol Pengaduan (Selalu Ada) */}
+            {/* Tombol Pengaduan */}
             <TouchableOpacity style={styles.menuItem} onPress={goToIncidentForm}>
-              <View style={styles.iconBox}>
-                <Ionicons name="alert-circle-outline" size={RFValue(28)} color="#053F5C" />
+              <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
+                {/* Warna Ikon Dynamic */}
+                <Ionicons name="alert-circle-outline" size={RFValue(28)} color={incidentColor} />
               </View>
-              <Text style={[styles.menuText, { color: isDarkMode ? colors.text : '#053F5C' }]}>
+              {/* Warna Teks Dynamic */}
+              <Text style={[styles.menuText, { color: incidentColor }]}>
                 Pengaduan
               </Text>
             </TouchableOpacity>
 
-            {/* Tombol Permintaan (Hanya Pegawai) */}
+            {/* Tombol Permintaan (Khusus Pegawai) */}
             {userRole === 'employee' && (
               <TouchableOpacity style={styles.menuItem} onPress={goToRequestForm}>
-                <View style={styles.iconBox}>
-                  <Ionicons name="document-text-outline" size={RFValue(28)} color="#053F5C" />
+                <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
+                  <Ionicons name="document-text-outline" size={RFValue(28)} color={requestColor} />
                 </View>
-                <Text style={[styles.menuText, { color: isDarkMode ? colors.text : '#053F5C' }]}>
+                <Text style={[styles.menuText, { color: requestColor }]}>
                   Permintaan
                 </Text>
               </TouchableOpacity>
             )}
           </View>
 
-          {/* 3. RINGKASAN LAYANAN (Hanya muncul jika BUKAN Tamu) */}
+          {/* 3. RINGKASAN LAYANAN */}
           {userRole !== 'guest' && (
             <View>
               <Text style={[styles.sectionTitle, { marginTop: hp('4%'), color: isDarkMode ? colors.text : '#053F5C' }]}>
@@ -177,19 +167,20 @@ const styles = StyleSheet.create({
   // --- MENU LAYANAN ---
   menuRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start', // Agar rapi dari kiri
-    gap: wp('5%'), // Jarak antar menu
+    // PERBAIKAN: Center Alignment
+    justifyContent: 'center', 
+    gap: wp('10%'), // Jarak antar ikon agak lebar biar enak dilihat
     alignItems: 'flex-start',
   },
   menuItem: {
     alignItems: 'center',
-    width: wp('25%'), // Ukuran item menu
+    width: wp('28%'),
   },
   iconBox: {
     width: wp('18%'), 
     height: wp('18%'),
     borderRadius: 15, 
-    backgroundColor: 'rgba(51, 124, 173, 0.4)', 
+    // Background color sudah diatur inline
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,

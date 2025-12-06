@@ -18,9 +18,14 @@ import EmailSentScreen from '../screens/auth/EmailSentScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import PasswordChangedScreen from '../screens/auth/PasswordChangedScreen';
 
-// User
+// User (FLOW PENGADUAN & PERMINTAAN BARU)
 import HomeScreen from '../screens/user/HomeScreen';
-import CreateTicketScreen from '../screens/user/CreateTicketScreen';
+import CreateIncidentScreen from '../screens/user/CreateIncidentScreen';
+import DetailIncidentScreen from '../screens/user/DetailIncidentScreen';
+import CreateRequestScreen from '../screens/user/CreateRequestScreen';
+import DetailRequestScreen from '../screens/user/DetailRequestScreen';
+
+// User (Lainnya)
 import TicketListScreen from '../screens/user/TicketListScreen';
 import TicketDetailScreen from '../screens/user/TicketDetailScreen';
 import InformationScreen from '../screens/user/InformationScreen';
@@ -150,7 +155,7 @@ function TechnicianTabs() {
 }
 
 export default function RootNavigator() {
-  const { isDarkMode, colors } = useTheme(); // Ambil colors dari context
+  const { isDarkMode, colors } = useTheme(); 
 
   let [fontsLoaded] = useFonts({
     Poppins_500Medium,
@@ -158,13 +163,11 @@ export default function RootNavigator() {
 
   if (!fontsLoaded) return null;
 
-  // --- THEME CONFIGURATION (ANTI FLICKER) ---
-  // Kita paksa warna background navigasi sama dengan warna background aplikasi kita
   const MyLightTheme = {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      background: colors.background, // Sinkronkan dengan ThemeContext
+      background: colors.background,
     },
   };
 
@@ -172,7 +175,7 @@ export default function RootNavigator() {
     ...DarkTheme,
     colors: {
       ...DarkTheme.colors,
-      background: colors.background, // Sinkronkan dengan ThemeContext
+      background: colors.background,
     },
   };
 
@@ -182,15 +185,12 @@ export default function RootNavigator() {
         initialRouteName="Splash"
         screenOptions={{
           headerShown: false,
-          // --- ANIMASI HALUS ---
           animation: 'slide_from_right',
-          // --- ANTI WHITE FLASH ---
-          // Ini memastikan layer paling belakang warnanya sesuai tema (bukan putih default)
           contentStyle: { backgroundColor: colors.background },
         }}
       >
 
-        {/* --- AUTH FLOW --- */}
+        {/* AUTH FLOW */}
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
@@ -200,22 +200,31 @@ export default function RootNavigator() {
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
 
-        {/* --- MAIN APPS --- */}
+        {/* MAIN APPS */}
         <Stack.Screen name="UserApp" component={UserTabs} />
         <Stack.Screen name="TechnicianApp" component={TechnicianTabs} />
 
-        {/* --- COMMON SCREENS --- */}
-        <Stack.Screen name="CreateTicket" component={CreateTicketScreen} />
+        {/* TICKET CREATION FLOW (BARU) */}
+        <Stack.Screen name="CreateIncident" component={CreateIncidentScreen} />
+        <Stack.Screen name="DetailIncident" component={DetailIncidentScreen} /> 
+        <Stack.Screen name="CreateRequest" component={CreateRequestScreen} /> 
+        <Stack.Screen name="DetailRequest" component={DetailRequestScreen} /> 
+
+        {/* COMMON SCREENS */}
+        {/* CreateTicketScreen SUDAH DIHAPUS DARI SINI KARENA SUDAH DIGANTI DI ATAS */}
         <Stack.Screen name="Notifications" component={NotificationScreen} />
         <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
 
+        {/* INFO & PROFILE */}
         <Stack.Screen name="Info" component={InformationScreen} />
         <Stack.Screen name="InformationDetail" component={InformationDetailScreen} />
         <Stack.Screen name="SatisfactionSurvey" component={SatisfactionSurveyScreen} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="AboutApp" component={AboutAppScreen} />
+        
+        {/* TECHNICIAN */}
         <Stack.Screen name="AssetHistory" component={AssetHistoryScreen} />
         <Stack.Screen name="TechPerformance" component={TechnicianPerformanceScreen} />
 

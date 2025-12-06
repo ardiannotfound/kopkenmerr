@@ -20,7 +20,6 @@ export default function ScanQRScreen() {
   const [torchEnabled, setTorchEnabled] = useState(false); 
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // 1. Minta Izin Kamera & Lokasi saat awal
   useEffect(() => {
     (async () => {
       const cameraStatus = await Camera.requestCameraPermissionsAsync();
@@ -29,12 +28,10 @@ export default function ScanQRScreen() {
     })();
   }, []);
 
-  // 2. Matikan flash jika keluar halaman
   useEffect(() => {
     if (!isFocused) setTorchEnabled(false);
   }, [isFocused]);
 
-  // --- FUNGSI AMBIL GPS ---
   const getCurrentLocation = async () => {
     try {
       setLoadingLocation(true);
@@ -48,12 +45,11 @@ export default function ScanQRScreen() {
     }
   };
 
-  // --- LOGIC UTAMA SCAN ---
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
     setScanned(true);
     setTorchEnabled(false);
     
-    // === SKENARIO 1: MASYARAKAT / PEGAWAI (Buat Tiket Baru) ===
+    // === LOGIKA 1: MASYARAKAT / PEGAWAI ===
     if (userRole === 'guest' || userRole === 'employee') {
       Alert.alert(
         "Aset Terdeteksi",
@@ -63,7 +59,9 @@ export default function ScanQRScreen() {
           { 
             text: "Ya, Lapor", 
             onPress: () => {
-              navigation.navigate('CreateTicket', {
+              // --- PERBAIKAN DISINI ---
+              // Ganti 'CreateTicket' menjadi 'CreateIncident'
+              navigation.navigate('CreateIncident', {
                 type: 'incident', userRole, userId, assetId: data, isQrScan: true
               });
             }
@@ -72,19 +70,15 @@ export default function ScanQRScreen() {
       );
     } 
     
-    // === SKENARIO 2: TEKNISI (Cek Tugas & Validasi Lokasi) ===
+    // === LOGIKA 2: TEKNISI (CHECK-IN GPS) ===
     else if (userRole === 'technician') {
-      
-      // Cari apakah ada tiket AKTIF yang COCOK dengan Aset ini
       const matchedTicket = MOCK_TICKETS.find(t => 
         t.technicianId === userId && 
         ['ready', 'in_progress', 'waiting_seksi'].includes(t.status) &&
-        (t.assetName?.toUpperCase().includes(data.toUpperCase()) || data.toUpperCase().includes("ROUTER")) // Fallback mock
+        (t.assetName?.toUpperCase().includes(data.toUpperCase()) || data.toUpperCase().includes("ROUTER"))
       );
 
       if (matchedTicket) {
-        // --- A. TIKET DITEMUKAN (VALID) ---
-        // Ambil GPS Real-time
         const realCoords = await getCurrentLocation();
 
         if (realCoords) {
@@ -103,12 +97,10 @@ export default function ScanQRScreen() {
             ]
           );
         } else {
-           // Jika GPS gagal diambil, reset agar bisa scan lagi
            setScanned(false);
         }
 
       } else {
-        // --- B. TIDAK ADA TIKET (INFO ASET) ---
         Alert.alert(
           "Info Aset",
           `Tidak ada tugas aktif untuk aset ini (${data}).\nLihat riwayat aset?`,
@@ -142,7 +134,6 @@ export default function ScanQRScreen() {
         />
       )}
       
-      {/* Loading Overlay saat ambil GPS */}
       {loadingLocation && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
@@ -163,9 +154,7 @@ export default function ScanQRScreen() {
           onPress={() => setTorchEnabled(!torchEnabled)}
         >
             <Ionicons name={torchEnabled ? "flash" : "flash-off"} size={24} color={torchEnabled ? "#000" : "#fff"} />
-            <Text style={[styles.flashText, torchEnabled && {color: '#000'}]}>
-              {torchEnabled ? "Matikan Flash" : "Nyalakan Flash"}
-            </Text>
+            <Text style={[styles.flashText, torchEnabled && {color: '#000'}]}>{torchEnabled ? "Matikan Flash" : "Nyalakan Flash"}</Text>
         </TouchableOpacity>
       </View>
 
