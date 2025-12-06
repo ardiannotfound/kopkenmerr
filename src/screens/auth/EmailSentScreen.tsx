@@ -14,37 +14,27 @@ import {
   heightPercentageToDP as hp 
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold 
-} from '@expo-google-fonts/poppins';
+
+// CLEAN CODE: Tidak perlu import useFonts lagi
 
 export default function EmailSentScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-  });
+  // CLEAN CODE: Hapus useFonts dan pengecekan if (!fontsLoaded)
+  // Font sudah dijamin siap oleh App.tsx
 
   // Tombol Tutup -> Kembali ke Login
   const handleClose = () => {
     navigation.navigate('Login');
   };
 
-  if (!fontsLoaded) return null;
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* 1. AREA GAMBAR (Mirip Role Selection) */}
+      {/* 1. AREA GAMBAR (50% Layar) */}
       <View style={styles.imageContainer}>
         <Image 
-          // Pastikan file ini ada di folder assets
           source={require('../../../assets/email-sent.png')} 
           style={styles.image}
         />
@@ -73,8 +63,7 @@ export default function EmailSentScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Tombol Simulasi (Opsional: Hanya untuk testing developer agar bisa lanjut flow) */}
-        {/* Bisa dihapus nanti saat production */}
+        {/* Tombol Simulasi (Hanya untuk Dev, nanti dihapus saat production) */}
         <TouchableOpacity 
           style={{ marginTop: 20, alignSelf: 'center' }} 
           onPress={() => navigation.navigate('ResetPassword')}
@@ -93,7 +82,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   
-  // --- IMAGE SECTION (50% Layar) ---
+  // --- IMAGE SECTION ---
   imageContainer: {
     height: hp('50%'),
     width: wp('100%'),
@@ -120,18 +109,18 @@ const styles = StyleSheet.create({
     marginBottom: hp('5%'),
   },
   title: {
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: 'Poppins_600SemiBold', // Font String Langsung
     fontSize: RFValue(24), 
-    color: '#263238', // Warna Request
+    color: '#263238', 
     marginBottom: hp('1.5%'),
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: 'Poppins_500Medium', 
     fontSize: RFValue(14), 
-    color: '#555657', // Warna Request
+    color: '#555657', 
     textAlign: 'center',
-    lineHeight: RFValue(22), // Spasi antar baris agar nyaman dibaca
+    lineHeight: RFValue(22), 
   },
 
   // Tombol
@@ -141,13 +130,13 @@ const styles = StyleSheet.create({
   },
   
   btnPrimary: {
-    backgroundColor: '#053F5C', // Warna Biru Tua
-    borderRadius: 21, // Corner Radius 21 (Sesuai Request)
+    backgroundColor: '#053F5C', 
+    borderRadius: 21, 
     paddingVertical: hp('1.5%'),
-    paddingHorizontal: wp('10%'), // Lebar tombol proporsional
+    paddingHorizontal: wp('10%'), 
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%', // Full width atau sesuaikan
+    width: '100%', 
     elevation: 2, 
     shadowColor: '#053F5C', 
     shadowOffset: { width: 0, height: 4 },
@@ -155,7 +144,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   btnText: {
-    fontFamily: 'Poppins_500Medium', // Medium
+    fontFamily: 'Poppins_500Medium', 
     fontSize: RFValue(16),
     color: '#FFFFFF',
   },

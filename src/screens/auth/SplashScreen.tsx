@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,8 +21,6 @@ import Animated, {
   Easing,
   runOnJS
 } from 'react-native-reanimated';
-
-// TIDAK PERLU IMPORT FONT LAGI (Sudah di App.tsx)
 
 const { width } = Dimensions.get('window');
 
@@ -53,21 +51,18 @@ export default function SplashScreen() {
     navigation.replace('Onboarding');
   };
 
-  useEffect(() => {
-    // 1. Sembunyikan Native Splash (Static) begitu masuk ke sini
-    const hideNativeSplash = async () => {
-      await SplashScreenUtil.hideAsync();
-    };
-    hideNativeSplash();
+  // Gunakan useCallback agar fungsi tidak direcreate
+  const onLayoutRootView = useCallback(async () => {
+    await SplashScreenUtil.hideAsync();
 
-    // 2. Jalankan Animasi React Native
-    // Geser Logo
-    logoTranslateX.value = withTiming(-width * 0.23, {
+    // 1. Geser Logo (Target: -23% Lebar Layar)
+    // Angka 0.23 ini pas agar logo bergeser ke kiri tapi tidak mepet pinggir
+    logoTranslateX.value = withTiming(-width * 0.30, {
       duration: 1800, 
       easing: Easing.bezier(0.25, 0.1, 0.25, 1), 
     });
 
-    // Munculkan Teks
+    // 2. Munculkan Teks
     textOpacity.value = withDelay(600, withTiming(1, { 
       duration: 1500,
       easing: Easing.out(Easing.quad)
@@ -78,16 +73,13 @@ export default function SplashScreen() {
       easing: Easing.out(Easing.quad)
     }, (finished) => {
       if (finished) {
-        // 3. Setelah animasi selesai, pindah halaman
-        // runOnJS wajib karena navigasi bukan UI worklet
         runOnJS(navigateNext)();
       }
     }));
-
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={onLayoutRootView}>
       <StatusBar style="light" />
       
       <View style={styles.contentContainer}>
@@ -149,24 +141,30 @@ const styles = StyleSheet.create({
     position: 'relative', 
   },
   
+  // LOGO: Mulai di tengah absolut
   logoContainer: {
     position: 'absolute',
     left: '50%',
-    marginLeft: -wp('15%'), 
+    marginLeft: -wp('15%'), // Setengah dari lebar logo (30% / 2)
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   logoImage: {
-    width: wp('30%'),
+    width: wp('30%'), 
     height: wp('30%'), 
     resizeMode: 'contain',
   },
 
+  // TEKS: Diatur agar menempel pas di kanan logo setelah logo bergeser
   textContainerWrapper: {
     position: 'absolute',
     left: '50%', 
-    marginLeft: -wp('5%'), 
+    // PERBAIKAN UTAMA DISINI:
+    // marginLeft -5% membuat teks mulai sedikit di kiri titik tengah.
+    // Saat logo geser ke kiri (-23%), dan teks di posisi ini (-5%),
+    // celah di antaranya akan pas dan terlihat center secara optik.
+    marginLeft: -wp('15%'), 
     width: wp('65%'), 
   },
 
@@ -175,7 +173,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontFamily: 'KonkhmerSleokchher_400Regular', // Font ini sudah diload di App.tsx
+    fontFamily: 'KonkhmerSleokchher_400Regular', 
     fontSize: RFValue(40), 
     color: '#FFFFFF',
     lineHeight: RFValue(50), 

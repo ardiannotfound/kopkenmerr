@@ -10,16 +10,7 @@ import {
   heightPercentageToDP as hp 
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold,
-  Poppins_700Bold
-} from '@expo-google-fonts/poppins';
-import { Inter_700Bold } from '@expo-google-fonts/inter';
 
-// Import Component
 import AuthHeader from '../../components/AuthHeader';
 
 export default function ResetPasswordScreen() {
@@ -33,14 +24,7 @@ export default function ResetPasswordScreen() {
   const [secureText1, setSecureText1] = useState(true);
   const [secureText2, setSecureText2] = useState(true);
 
-  // Load Fonts
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-    Inter_700Bold,
-  });
+  // CLEAN CODE: Hapus useFonts
 
   const handleSave = () => {
     if (!newPassword || !confirmPassword) {
@@ -56,8 +40,6 @@ export default function ResetPasswordScreen() {
     navigation.replace('PasswordChanged');
   };
 
-  if (!fontsLoaded) return null;
-
   return (
     <View style={styles.container}>
       
@@ -65,7 +47,7 @@ export default function ResetPasswordScreen() {
       <AuthHeader />
 
       {/* 2. FORM CONTAINER */}
-      <View style={styles.formContainer}>
+      <View style={[styles.formContainer, { zIndex: 999 }]}>
         <ScrollView 
           showsVerticalScrollIndicator={false} 
           contentContainerStyle={{ flexGrow: 1 }}
@@ -80,7 +62,10 @@ export default function ResetPasswordScreen() {
           {/* INPUT 1: PASSWORD BARU */}
           <Text style={styles.label}>Password Baru</Text>
           <View style={styles.inputBox}>
+            {/* Icon Kiri */}
             <Ionicons name="lock-closed-outline" size={20} color="#555657" style={styles.iconLeft} />
+            
+            {/* Input Tengah */}
             <TextInput
               style={styles.input}
               placeholder="Masukkan Password Baru"
@@ -89,8 +74,10 @@ export default function ResetPasswordScreen() {
               onChangeText={setNewPassword}
               secureTextEntry={secureText1}
             />
-            <TouchableOpacity onPress={() => setSecureText1(!secureText1)}>
-              <Ionicons name={secureText1 ? "eye-off-outline" : "eye-outline"} size={20} color="#555657" />
+
+            {/* Icon Kanan (Toggle) */}
+            <TouchableOpacity onPress={() => setSecureText1(!secureText1)} style={styles.iconWrapper}>
+              <Ionicons name={secureText1 ? "eye-off-outline" : "eye-outline"} size={22} color="#555657" />
             </TouchableOpacity>
           </View>
 
@@ -106,14 +93,14 @@ export default function ResetPasswordScreen() {
               onChangeText={setConfirmPassword}
               secureTextEntry={secureText2}
             />
-            <TouchableOpacity onPress={() => setSecureText2(!secureText2)}>
-              <Ionicons name={secureText2 ? "eye-off-outline" : "eye-outline"} size={20} color="#555657" />
+            <TouchableOpacity onPress={() => setSecureText2(!secureText2)} style={styles.iconWrapper}>
+              <Ionicons name={secureText2 ? "eye-off-outline" : "eye-outline"} size={22} color="#555657" />
             </TouchableOpacity>
           </View>
 
           {/* TOMBOL SIMPAN */}
           <TouchableOpacity 
-            style={[styles.actionButton, { marginTop: 'auto' }]} 
+            style={styles.actionButton} 
             onPress={handleSave}
           >
             <Text style={styles.actionButtonText}>SIMPAN</Text>
@@ -134,7 +121,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#053F5C', 
   },
   
-  // Style Card Putih
   formContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -152,7 +138,7 @@ const styles = StyleSheet.create({
   },
   titlePage: {
     fontFamily: 'Poppins_700Bold',
-    fontSize: RFValue(24), // Ukuran disesuaikan agar muat jika judul panjang
+    fontSize: RFValue(24),
     color: '#053F5C',
     marginBottom: hp('0.5%'),
     textAlign: 'center',
@@ -177,28 +163,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 9, // Radius 9
+    borderRadius: 9,
     borderWidth: 1,
-    borderColor: '#E5E2E2', // Stroke E5E2E2
-    paddingHorizontal: 15,
+    borderColor: '#E5E2E2',
+    paddingLeft: 15,
+    paddingRight: 0, // Padding kanan 0 karena ada iconWrapper
     height: hp('6.5%'), 
     marginBottom: hp('3%'),
+    overflow: 'hidden',
   },
   iconLeft: {
     marginRight: 10,
   },
   input: {
-    flex: 1,
+    flex: 1, // Mengisi ruang tengah
     fontFamily: 'Poppins_400Regular',
     fontSize: RFValue(14),
     color: '#333',
-    marginRight: 10,
+    height: '100%',
+  },
+  iconWrapper: {
+    width: 40, // Lebar fix untuk area klik mata
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Main Button (SIMPAN)
   actionButton: {
     backgroundColor: '#053F5C',
-    borderRadius: 20, // Radius 20
+    borderRadius: 20,
     height: hp('7%'),
     justifyContent: 'center',
     alignItems: 'center',
@@ -207,10 +201,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
+    marginTop: 'auto', // Dorong ke bawah
     marginBottom: hp('3%'),
   },
   actionButtonText: {
-    fontFamily: 'Inter_700Bold', // Inter Bold
+    fontFamily: 'Inter_700Bold',
     fontSize: RFValue(16),
     color: '#FFFFFF',
     letterSpacing: 1,

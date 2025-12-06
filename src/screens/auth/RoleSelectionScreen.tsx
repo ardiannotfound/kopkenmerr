@@ -9,12 +9,6 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold 
-} from '@expo-google-fonts/poppins';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
@@ -22,14 +16,14 @@ import {
 import { RFValue } from 'react-native-responsive-fontsize';
 import { setCurrentUser } from '../../data/Session';
 
+// HAPUS IMPORT useFonts DARI SINI
+// Font Poppins sudah siap pakai dari App.tsx
+
 export default function RoleSelectionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-  });
+  // --- CLEAN CODE: HAPUS useFonts DISINI ---
+  // Font sudah siap.
 
   // --- LOGIC NAVIGASI ---
 
@@ -45,7 +39,7 @@ export default function RoleSelectionScreen() {
     navigation.navigate('Login'); 
   };
 
-  if (!fontsLoaded) return null;
+  // Hapus pengecekan if (!fontsLoaded) return null;
 
   return (
     <View style={styles.container}>
@@ -104,33 +98,33 @@ const styles = StyleSheet.create({
   
   // --- IMAGE SECTION ---
   imageContainer: {
-    height: hp('55%'), // Mengambil 55% tinggi layar
+    height: hp('55%'), 
     width: wp('100%'),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: hp('4%'), // Padding aman dari status bar
+    paddingTop: hp('4%'), 
   },
   image: {
-    width: wp('85%'), // Lebar gambar 85% layar
-    height: hp('40%'), // Tinggi gambar proporsional
+    width: wp('85%'), 
+    height: hp('40%'), 
     resizeMode: 'contain',
   },
 
   // --- CONTENT SECTION ---
   contentContainer: {
     flex: 1,
-    paddingHorizontal: wp('7%'), // Kanan kiri 7%
+    paddingHorizontal: wp('7%'), 
     justifyContent: 'flex-start',
   },
 
   // Teks
   textWrapper: {
     alignItems: 'center',
-    marginBottom: hp('5%'), // Jarak antara teks dan tombol
+    marginBottom: hp('5%'), 
   },
   title: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(24), // Font size responsif
+    fontFamily: 'Poppins_600SemiBold', // Langsung pakai nama font string
+    fontSize: RFValue(24), 
     color: '#000000',
     marginBottom: hp('1%'),
     textAlign: 'center',
@@ -145,14 +139,14 @@ const styles = StyleSheet.create({
   // Tombol
   buttonWrapper: {
     width: '100%',
-    gap: hp('2%'), // Jarak antar tombol (Gap vertikal)
+    gap: hp('2%'), 
   },
   
   // Button Primary (Pegawai)
   btnPrimary: {
     backgroundColor: '#053F5C', 
     borderRadius: 12, 
-    paddingVertical: hp('2%'), // Padding atas bawah responsif
+    paddingVertical: hp('2%'), 
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',

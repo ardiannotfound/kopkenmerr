@@ -16,14 +16,6 @@ import {
   heightPercentageToDP as hp 
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold,
-  Poppins_700Bold
-} from '@expo-google-fonts/poppins';
-import { Inter_700Bold } from '@expo-google-fonts/inter';
 
 import AuthHeader from '../../components/AuthHeader';
 import { MOCK_USERS } from '../../data/mockData';
@@ -35,14 +27,6 @@ export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
-
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-    Inter_700Bold,
-  });
 
   const handleLogin = () => {
     const user = MOCK_USERS.find(u => u.username === username);
@@ -62,12 +46,9 @@ export default function LoginScreen() {
     navigation.navigate('ForgotPassword'); 
   };
 
-  // Fungsi Kembali ke Role Selection
   const handleBack = () => {
-    navigation.goBack(); // Kembali ke halaman sebelumnya (RoleSelection)
+    navigation.goBack(); 
   };
-
-  if (!fontsLoaded) return null;
 
   return (
     <View style={styles.container}>
@@ -127,12 +108,12 @@ export default function LoginScreen() {
             <Text style={styles.forgotPassText}>Lupa Password?</Text>
           </TouchableOpacity>
 
-          {/* TOMBOL LOGIN (Margin Auto mendorong ke bawah) */}
+          {/* TOMBOL LOGIN */}
           <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
             <Text style={styles.loginButtonText}>LOGIN</Text>
           </TouchableOpacity>
 
-          {/* TOMBOL KEMBALI (Baru) */}
+          {/* TOMBOL KEMBALI */}
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Text style={styles.backButtonText}>Kembali</Text>
           </TouchableOpacity>
@@ -205,7 +186,7 @@ const styles = StyleSheet.create({
     height: '100%', 
   },
   iconWrapper: {
-    width: 40, // Lebar area ikon
+    width: 40,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -231,8 +212,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
-    marginTop: 'auto', // Dorong ke bawah
-    marginBottom: hp('2%'), // Jarak dengan tombol kembali
+    marginTop: 'auto', 
+    marginBottom: hp('2%'), 
   },
   loginButtonText: {
     fontFamily: 'Inter_700Bold',
@@ -241,7 +222,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // STYLE BARU: TOMBOL KEMBALI
   backButton: {
     alignItems: 'center',
     paddingVertical: 10,
@@ -250,6 +230,6 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontFamily: 'Poppins_500Medium',
     fontSize: RFValue(14),
-    color: '#555657', // Abu-abu agar tidak terlalu mencolok (hierarki sekunder)
+    color: '#555657', 
   },
 });

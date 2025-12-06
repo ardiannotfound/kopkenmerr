@@ -5,13 +5,9 @@ import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-c
 
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider } from './src/context/ThemeContext';
-import useCachedResources from './src/hooks/useCachedResources'; // <--- PANGGIL HOOK
-
-// Abaikan warning
-LogBox.ignoreLogs(['edge-to-edge']); 
+import useCachedResources from './src/hooks/useCachedResources';
 
 export default function App() {
-  // 1. Panggil Hook untuk load semua aset
   const isLoadingComplete = useCachedResources();
 
   // 2. Custom Metrics untuk fix space bawah navigasi Android

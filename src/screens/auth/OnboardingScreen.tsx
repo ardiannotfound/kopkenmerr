@@ -12,19 +12,14 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold 
-} from '@expo-google-fonts/poppins';
-import {
-  widthPercentageToDP as wp,
+  widthPercentageToDP as wp, 
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
 
+// Pastikan Font sudah diload di App.tsx (useCachedResources), jadi disini tidak perlu useFonts lagi.
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const SLIDES = [
   {
@@ -52,25 +47,12 @@ export default function OnboardingScreen() {
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-  });
-
-  // Viewability yang jauh lebih stabil
-  const viewabilityConfigCallbackPairs = useRef([
-    {
-      onViewableItemsChanged: ({ viewableItems }: any) => {
-        if (viewableItems.length > 0) {
-          setCurrentIndex(viewableItems[0].index);
-        }
-      },
-      viewabilityConfig: {
-        viewAreaCoveragePercentThreshold: 50,
-      },
-    },
-  ]).current;
+  // --- LOGIC UPDATE INDEX (ANTI-LAG) ---
+  const handleScroll = (event: any) => {
+    // Hitung index berdasarkan offset X dibagi lebar layar
+    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+    setCurrentIndex(slideIndex);
+  };
 
   const handleNext = () => {
     if (currentIndex < SLIDES.length - 1) {
@@ -83,10 +65,6 @@ export default function OnboardingScreen() {
 
   const handleSkip = () => navigation.replace('RoleSelection');
   const handleFinish = () => navigation.replace('RoleSelection');
-
-  if (!fontsLoaded) {
-    return <View style={{ flex: 1, backgroundColor: 'white' }} />;
-  }
 
   return (
     <View style={styles.container}>
@@ -102,14 +80,8 @@ export default function OnboardingScreen() {
           showsHorizontalScrollIndicator={false}
           bounces={false}
           keyExtractor={(item) => item.id}
-          viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
-          removeClippedSubviews={false}
-          scrollEventThrottle={16}
-          getItemLayout={(data, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
+          // GANTI viewabilityConfig DENGAN INI:
+          onMomentumScrollEnd={handleScroll} 
           renderItem={({ item }) => (
             <View style={styles.slide}>
               <View style={styles.imageContainer}>
@@ -147,10 +119,10 @@ export default function OnboardingScreen() {
           </View>
         ) : (
           <View style={styles.navigationButtons}>
-            <TouchableOpacity onPress={handleSkip} style={{ padding: 10 }}>
+            <TouchableOpacity onPress={handleSkip} style={styles.touchArea}>
               <Text style={styles.navText}>Skip</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleNext} style={{ padding: 10 }}>
+            <TouchableOpacity onPress={handleNext} style={styles.touchArea}>
               <Text style={styles.navText}>Next</Text>
             </TouchableOpacity>
           </View>
@@ -167,7 +139,7 @@ const styles = StyleSheet.create({
   },
 
   slide: {
-    width: wp('100%'),
+    width: width, // Lebar layar penuh (Dimensions)
     alignItems: 'center',
   },
 
@@ -187,14 +159,10 @@ const styles = StyleSheet.create({
 
   textContainer: {
     width: wp('100%'),
-    // paddingHorizontal ditingkatkan sedikit agar teks tidak terlalu mepet layar
     paddingHorizontal: wp('8%'), 
     alignItems: 'center',
     marginTop: hp('1%'),
-    // HAPUS minHeight agar container bisa memanjang kebawah mengikuti teks
-    // minHeight: hp('18%'), 
     justifyContent: 'flex-start',
-    // Tambah padding bawah agar tidak nabrak area dots jika teks panjang
     paddingBottom: hp('5%'), 
   },
 
@@ -203,7 +171,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(22), 
     color: '#263238',
     textAlign: 'center',
-    marginBottom: hp('1.5%'), // Jarak title ke subtitle diperlega sedikit
+    marginBottom: hp('1.5%'), 
   },
 
   subtitle: {
@@ -211,16 +179,14 @@ const styles = StyleSheet.create({
     fontSize: RFValue(13),
     color: '#555657',
     textAlign: 'center',
-    lineHeight: RFValue(20), // Line height sedikit dilonggarkan
-    // HAPUS maxWidth. Biarkan paddingHorizontal parent yang mengatur lebar.
-    // maxWidth: wp('85%'), 
+    lineHeight: RFValue(20), 
   },
 
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     position: 'absolute',
-    bottom: hp('14%'), // Tetap di posisi fix
+    bottom: hp('14%'), 
     width: '100%',
   },
 
@@ -250,6 +216,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+
+  touchArea: {
+    padding: 10,
   },
 
   navText: {

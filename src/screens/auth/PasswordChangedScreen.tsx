@@ -14,21 +14,13 @@ import {
   heightPercentageToDP as hp 
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold 
-} from '@expo-google-fonts/poppins';
+
+// CLEAN CODE: Hapus import useFonts
 
 export default function PasswordChangedScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-  });
+  // CLEAN CODE: Hapus logic load fonts lokal
 
   const handleFinish = () => {
     // Reset navigasi agar user tidak bisa tekan 'Back' ke form ganti password
@@ -39,8 +31,6 @@ export default function PasswordChangedScreen() {
       })
     );
   };
-
-  if (!fontsLoaded) return null;
 
   return (
     <View style={styles.container}>
@@ -115,8 +105,8 @@ const styles = StyleSheet.create({
     marginBottom: hp('5%'),
   },
   title: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(22), // Sedikit dikecilkan agar muat jika layarnya sempit
+    fontFamily: 'Poppins_600SemiBold', // Font String Langsung
+    fontSize: RFValue(22),
     color: '#263238', 
     marginBottom: hp('1.5%'),
     textAlign: 'center',
@@ -152,6 +142,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_500Medium', 
     fontSize: RFValue(16),
     color: '#FFFFFF',
-    letterSpacing: 0.5, // Sedikit spacing agar terlihat tegas
+    letterSpacing: 0.5, 
   },
 });
