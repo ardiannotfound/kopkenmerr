@@ -138,9 +138,9 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* 3. RINGKASAN LAYANAN (Hanya muncul jika bukan Tamu) */}
-          
-            <>
+          {/* 3. RINGKASAN LAYANAN (Hanya muncul jika BUKAN Tamu) */}
+          {userRole !== 'guest' && (
+            <View>
               <Text style={[styles.sectionTitle, { marginTop: hp('4%'), color: isDarkMode ? colors.text : '#053F5C' }]}>
                 Ringkasan Layanan
               </Text>
@@ -150,8 +150,8 @@ export default function HomeScreen() {
                 {renderSummaryCard(stats.process, 'Diproses')}
                 {renderSummaryCard(stats.done, 'Selesai')}
               </View>
-            </>
-          
+            </View>
+          )}
 
         </View>
       </ScrollView>
@@ -177,18 +177,19 @@ const styles = StyleSheet.create({
   // --- MENU LAYANAN ---
   menuRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around', // Agar center jika cuma 1, atau spread jika 2
+    justifyContent: 'flex-start', // Agar rapi dari kiri
+    gap: wp('5%'), // Jarak antar menu
     alignItems: 'flex-start',
   },
   menuItem: {
     alignItems: 'center',
-    width: wp('30%'),
+    width: wp('25%'), // Ukuran item menu
   },
   iconBox: {
-    width: wp('18%'), // Responsif ~ 48x48 tergantung layar
+    width: wp('18%'), 
     height: wp('18%'),
-    borderRadius: 15, // Agak kotak tumpul
-    backgroundColor: 'rgba(51, 124, 173, 0.4)', // #337CAD 40%
+    borderRadius: 15, 
+    backgroundColor: 'rgba(51, 124, 173, 0.4)', 
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -209,7 +210,6 @@ const styles = StyleSheet.create({
     paddingVertical: hp('2%'),
     paddingHorizontal: wp('5%'),
     borderRadius: 17,
-    // Background diatur dynamic di inline style
   },
   summaryCountContainer: {
     width: wp('10%'),
@@ -219,10 +219,9 @@ const styles = StyleSheet.create({
   summaryCount: {
     fontFamily: 'Poppins_400Regular',
     fontSize: RFValue(20),
-    // Color dynamic
   },
   summaryDivider: {
-    width: 2, // Weight 2
+    width: 2, 
     height: '100%',
     backgroundColor: '#053F5C',
     marginHorizontal: wp('4%'),
@@ -233,6 +232,5 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontFamily: 'Poppins_400Regular',
     fontSize: RFValue(14),
-    // Color dynamic
   },
 });

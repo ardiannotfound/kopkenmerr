@@ -1,39 +1,39 @@
-import React, { useEffect } from 'react';
-import { Platform } from 'react-native'; // Import Platform untuk cek Android
+import React from 'react';
+import { LogBox } from 'react-native'; 
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as NavigationBar from 'expo-navigation-bar'; // <--- 1. IMPORT LIBRARY INI
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 import RootNavigator from './src/navigation/RootNavigator';
 import { ThemeProvider } from './src/context/ThemeContext';
+import useCachedResources from './src/hooks/useCachedResources'; // <--- PANGGIL HOOK
+
+// Abaikan warning
+LogBox.ignoreLogs(['edge-to-edge']); 
 
 export default function App() {
+  // 1. Panggil Hook untuk load semua aset
+  const isLoadingComplete = useCachedResources();
 
-  // --- 2. LOGIC IMMERSIVE MODE (ANDROID) ---
-  useEffect(() => {
-    const enableImmersiveMode = async () => {
-      // Fitur ini spesifik untuk Android
-      if (Platform.OS === 'android') {
-        // Sembunyikan tombol navigasi bawah (Back, Home, Recent)
-        await NavigationBar.setVisibilityAsync("hidden");
-        
-        // Atur perilaku: Muncul saat di-swipe, lalu hilang lagi otomatis
-        await NavigationBar.setBehaviorAsync("overlay-swipe");
+  // 2. Custom Metrics untuk fix space bawah navigasi Android
+  const customMetrics = {
+    frame: initialWindowMetrics?.frame || { x: 0, y: 0, width: 0, height: 0 },
+    insets: {
+      top: initialWindowMetrics?.insets.top ?? 0,
+      left: initialWindowMetrics?.insets.left ?? 0,
+      right: initialWindowMetrics?.insets.right ?? 0,
+      bottom: 0, 
+    },
+  };
 
-        // (Opsional) Biar bar-nya transparan saat muncul
-        // await NavigationBar.setBackgroundColorAsync("transparent");
-      }
-    };
-
-    enableImmersiveMode();
-  }, []);
-  // ------------------------------------------
+  // 3. Jika belum selesai load, return null (Splash Native masih tampil)
+  if (!isLoadingComplete) {
+    return null;
+  }
 
   return (
     <ThemeProvider>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={customMetrics} style={{ flex: 1, backgroundColor: '#053F5C' }}>
         <RootNavigator />
-        {/* StatusBar style "auto" menyesuaikan tema (Hitam/Putih) */}
         <StatusBar style="auto" /> 
       </SafeAreaProvider>
     </ThemeProvider>

@@ -18,22 +18,16 @@ import Animated, {
   useAnimatedStyle, 
   withTiming, 
   withDelay,
-  Easing
+  Easing,
+  runOnJS
 } from 'react-native-reanimated';
-import { useFonts, KonkhmerSleokchher_400Regular } from '@expo-google-fonts/konkhmer-sleokchher';
+
+// TIDAK PERLU IMPORT FONT LAGI (Sudah di App.tsx)
 
 const { width } = Dimensions.get('window');
 
-// Tahan Splash Screen Native
-SplashScreenUtil.preventAutoHideAsync();
-
 export default function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-
-  // Load Font
-  let [fontsLoaded] = useFonts({
-    KonkhmerSleokchher_400Regular,
-  });
 
   // ANIMASI VALUES
   const logoTranslateX = useSharedValue(0); 
@@ -54,41 +48,43 @@ export default function SplashScreen() {
     };
   });
 
+  // Logic Pindah Halaman
+  const navigateNext = () => {
+    navigation.replace('Onboarding');
+  };
+
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreenUtil.hideAsync();
+    // 1. Sembunyikan Native Splash (Static) begitu masuk ke sini
+    const hideNativeSplash = async () => {
+      await SplashScreenUtil.hideAsync();
+    };
+    hideNativeSplash();
 
-      setTimeout(() => {
-        // PERBAIKAN 1: Geser Logo tidak terlalu jauh (Cukup 23% layar)
-        // Sebelumnya 0.32 (terlalu pinggir), sekarang 0.23 (lebih tengah)
-        logoTranslateX.value = withTiming(-width * 0.32, {
-          duration: 1800, 
-          easing: Easing.bezier(0.25, 0.1, 0.25, 1), 
-        });
+    // 2. Jalankan Animasi React Native
+    // Geser Logo
+    logoTranslateX.value = withTiming(-width * 0.23, {
+      duration: 1800, 
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1), 
+    });
 
-        // Munculkan Teks
-        textOpacity.value = withDelay(600, withTiming(1, { 
-          duration: 1500,
-          easing: Easing.out(Easing.quad)
-        }));
+    // Munculkan Teks
+    textOpacity.value = withDelay(600, withTiming(1, { 
+      duration: 1500,
+      easing: Easing.out(Easing.quad)
+    }));
 
-        // Animasi translateX teks
-        textTranslateX.value = withDelay(600, withTiming(0, { 
-          duration: 1500,
-          easing: Easing.out(Easing.quad)
-        }));
+    textTranslateX.value = withDelay(600, withTiming(0, { 
+      duration: 1500,
+      easing: Easing.out(Easing.quad)
+    }, (finished) => {
+      if (finished) {
+        // 3. Setelah animasi selesai, pindah halaman
+        // runOnJS wajib karena navigasi bukan UI worklet
+        runOnJS(navigateNext)();
+      }
+    }));
 
-      }, 500);
-
-      const timer = setTimeout(() => {
-        navigation.replace('Onboarding');
-      }, 5500); 
-
-      return () => clearTimeout(timer);
-    }
-  }, [fontsLoaded, navigation]);
-
-  if (!fontsLoaded) return null;
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -96,7 +92,7 @@ export default function SplashScreen() {
       
       <View style={styles.contentContainer}>
         
-        {/* LOGO - Bungkus dalam container absolut */}
+        {/* LOGO */}
         <View style={styles.logoContainer}>
           <Animated.View style={animatedLogoStyle}>
             <Image 
@@ -106,7 +102,7 @@ export default function SplashScreen() {
           </Animated.View>
         </View>
 
-        {/* TEXT CONTAINER - Bungkus dalam container absolut */}
+        {/* TEXT CONTAINER */}
         <View style={styles.textContainerWrapper}>
           <Animated.View style={[styles.textContainer, animatedTextStyle]}>
             <Text 
@@ -153,28 +149,24 @@ const styles = StyleSheet.create({
     position: 'relative', 
   },
   
-  // Container absolut untuk logo
   logoContainer: {
     position: 'absolute',
     left: '50%',
-    marginLeft: -wp('15%'), // Titik tengah awal logo (karena width 30%)
+    marginLeft: -wp('15%'), 
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   logoImage: {
-    width: wp('30%'), 
+    width: wp('30%'),
     height: wp('30%'), 
     resizeMode: 'contain',
   },
 
-  // Container absolut untuk teks
   textContainerWrapper: {
     position: 'absolute',
     left: '50%', 
-    // PERBAIKAN 2: Margin disesuaikan agar nempel pas di kanan logo baru
-    // Tadinya -17% (terlalu kiri), sekarang -5% (pas di tengah kanan)
-    marginLeft: -wp('17%'), 
+    marginLeft: -wp('5%'), 
     width: wp('65%'), 
   },
 
@@ -183,11 +175,10 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontFamily: 'KonkhmerSleokchher_400Regular', 
+    fontFamily: 'KonkhmerSleokchher_400Regular', // Font ini sudah diload di App.tsx
     fontSize: RFValue(40), 
     color: '#FFFFFF',
     lineHeight: RFValue(50), 
-    // PERBAIKAN 3: Jarak vertikal title-subtitle dirapatkan
     marginBottom: -hp('1.5%'), 
     textAlign: 'left',
     letterSpacing: -2.5,
