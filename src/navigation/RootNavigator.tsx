@@ -47,7 +47,6 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 // --- CUSTOM BUTTON KHUSUS SCAN QR (FLOAT) ---
-// Perbaikan: Render Icon langsung disini, jangan pakai {children} biar center
 const CustomScanButton = ({ onPress }: any) => (
   <TouchableOpacity
     style={styles.customBtnContainer}
@@ -55,7 +54,6 @@ const CustomScanButton = ({ onPress }: any) => (
     activeOpacity={0.8}
   >
     <View style={styles.customBtnCircle}>
-      {/* Icon Manual disini agar CENTER sempurna */}
       <Ionicons name="qr-code" size={30} color="#FFFFFF" />
     </View>
   </TouchableOpacity>
@@ -66,23 +64,23 @@ const screenOptionsTab = ({ route }: any) => ({
   headerShown: false,
   tabBarShowLabel: true,
   tabBarActiveTintColor: '#053F5C',
-  tabBarInactiveTintColor: '#B0BEC5', // Warna abu untuk yang tidak aktif
-  
+  tabBarInactiveTintColor: '#B0BEC5',
+
   tabBarLabelStyle: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 10,
     marginTop: -5,
     marginBottom: 5,
   },
-  
+
   tabBarStyle: {
-    height: Platform.OS === 'ios' ? 90 : 70, 
-    backgroundColor: '#E9ECEF', 
-    borderTopWidth: 0, 
-    elevation: 0, 
-    borderTopLeftRadius: 20, 
+    height: Platform.OS === 'ios' ? 90 : 70,
+    backgroundColor: '#E9ECEF',
+    borderTopWidth: 0,
+    elevation: 0,
+    borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    position: 'absolute', 
+    position: 'absolute',
     bottom: 0,
   } as any,
 
@@ -94,13 +92,10 @@ const screenOptionsTab = ({ route }: any) => ({
     else if (route.name === 'Lacak' || route.name === 'Tugas') iconName = focused ? 'list' : 'list-outline';
     else if (route.name === 'Akun') iconName = focused ? 'person' : 'person-outline';
     else if (route.name === 'Jadwal') iconName = focused ? 'calendar' : 'calendar-outline';
-    
-    // Scan QR tidak perlu dihandle disini lagi karena sudah di CustomButton
-    
+
     return (
       <View style={{ alignItems: 'center', justifyContent: 'center', top: focused ? -2 : 0 }}>
         <Ionicons name={iconName} size={24} color={color} />
-        {/* {focused && <View style={styles.activeDot} />} */}
       </View>
     );
   },
@@ -108,93 +103,121 @@ const screenOptionsTab = ({ route }: any) => ({
 
 // A. Tab untuk Masyarakat/Pegawai
 function UserTabs() {
+  const { colors } = useTheme();
   return (
-    <Tab.Navigator screenOptions={screenOptionsTab}>
-      <Tab.Screen name="Beranda" component={HomeScreen} />
-      <Tab.Screen name="Info" component={InformationScreen} />
-      
-      {/* SCAN QR FLOAT */}
-      <Tab.Screen 
-        name="Scan QR" 
-        component={ScanQRScreen} 
-        options={{
-          tabBarButton: (props) => <CustomScanButton {...props} />, // Panggil Button Custom
-          tabBarLabel: () => null, // Hilangkan label
-          tabBarStyle: { display: 'none' }
-        }}
-      />
-      
-      <Tab.Screen name="Lacak" component={TicketListScreen} />
-      <Tab.Screen name="Akun" component={ProfileScreen} />
-    </Tab.Navigator>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Tab.Navigator screenOptions={screenOptionsTab}>
+        <Tab.Screen name="Beranda" component={HomeScreen} />
+        <Tab.Screen name="Info" component={InformationScreen} />
+        <Tab.Screen
+          name="Scan QR"
+          component={ScanQRScreen}
+          options={{
+            tabBarButton: (props) => <CustomScanButton {...props} />,
+            tabBarLabel: () => null,
+            tabBarStyle: { display: 'none' }
+          }}
+        />
+        <Tab.Screen name="Lacak" component={TicketListScreen} />
+        <Tab.Screen name="Akun" component={ProfileScreen} />
+      </Tab.Navigator>
+    </View>
   );
 }
 
 // B. Tab untuk Teknisi
 function TechnicianTabs() {
+  const { colors } = useTheme();
   return (
-    <Tab.Navigator screenOptions={screenOptionsTab}>
-      <Tab.Screen name="Beranda" component={TechnicianHomeScreen} />
-      <Tab.Screen name="Tugas" component={TechnicianTaskScreen} />
-      
-      {/* SCAN QR FLOAT */}
-      <Tab.Screen 
-        name="Scan QR" 
-        component={ScanQRScreen} 
-        options={{
-          tabBarButton: (props) => <CustomScanButton {...props} />,
-          tabBarLabel: () => null,
-          tabBarStyle: { display: 'none' }
-        }}
-      />
-      
-      <Tab.Screen name="Jadwal" component={TechnicianScheduleScreen} />
-      <Tab.Screen name="Akun" component={ProfileScreen} />
-    </Tab.Navigator>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Tab.Navigator screenOptions={screenOptionsTab}>
+        <Tab.Screen name="Beranda" component={TechnicianHomeScreen} />
+        <Tab.Screen name="Tugas" component={TechnicianTaskScreen} />
+        <Tab.Screen
+          name="Scan QR"
+          component={ScanQRScreen}
+          options={{
+            tabBarButton: (props) => <CustomScanButton {...props} />,
+            tabBarLabel: () => null,
+            tabBarStyle: { display: 'none' }
+          }}
+        />
+        <Tab.Screen name="Jadwal" component={TechnicianScheduleScreen} />
+        <Tab.Screen name="Akun" component={ProfileScreen} />
+      </Tab.Navigator>
+    </View>
   );
 }
 
 export default function RootNavigator() {
-  const { isDarkMode } = useTheme();
-  
+  const { isDarkMode, colors } = useTheme(); // Ambil colors dari context
+
   let [fontsLoaded] = useFonts({
     Poppins_500Medium,
   });
 
   if (!fontsLoaded) return null;
 
+  // --- THEME CONFIGURATION (ANTI FLICKER) ---
+  // Kita paksa warna background navigasi sama dengan warna background aplikasi kita
+  const MyLightTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colors.background, // Sinkronkan dengan ThemeContext
+    },
+  };
+
+  const MyDarkTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: colors.background, // Sinkronkan dengan ThemeContext
+    },
+  };
+
   return (
-    <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
-      <Stack.Navigator initialRouteName="Splash">
-        
+    <NavigationContainer theme={isDarkMode ? MyDarkTheme : MyLightTheme}>
+      <Stack.Navigator
+        initialRouteName="Splash"
+        screenOptions={{
+          headerShown: false,
+          // --- ANIMASI HALUS ---
+          animation: 'slide_from_right',
+          // --- ANTI WHITE FLASH ---
+          // Ini memastikan layer paling belakang warnanya sesuai tema (bukan putih default)
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+
         {/* --- AUTH FLOW --- */}
-        <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="EmailSent" component={EmailSentScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="EmailSent" component={EmailSentScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
 
         {/* --- MAIN APPS --- */}
-        <Stack.Screen name="UserApp" component={UserTabs} options={{ headerShown: false }} />
-        <Stack.Screen name="TechnicianApp" component={TechnicianTabs} options={{ headerShown: false }} />
-        
+        <Stack.Screen name="UserApp" component={UserTabs} />
+        <Stack.Screen name="TechnicianApp" component={TechnicianTabs} />
+
         {/* --- COMMON SCREENS --- */}
-        <Stack.Screen name="CreateTicket" component={CreateTicketScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Notifications" component={NotificationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="TicketDetail" component={TicketDetailScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Chat" component={ChatScreen} options={{ headerShown: false }} />
-        
-        <Stack.Screen name="Info" component={InformationScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="InformationDetail" component={InformationDetailScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="SatisfactionSurvey" component={SatisfactionSurveyScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="AboutApp" component={AboutAppScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="AssetHistory" component={AssetHistoryScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="TechPerformance" component={TechnicianPerformanceScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="CreateTicket" component={CreateTicketScreen} />
+        <Stack.Screen name="Notifications" component={NotificationScreen} />
+        <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
+
+        <Stack.Screen name="Info" component={InformationScreen} />
+        <Stack.Screen name="InformationDetail" component={InformationDetailScreen} />
+        <Stack.Screen name="SatisfactionSurvey" component={SatisfactionSurveyScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="AboutApp" component={AboutAppScreen} />
+        <Stack.Screen name="AssetHistory" component={AssetHistoryScreen} />
+        <Stack.Screen name="TechPerformance" component={TechnicianPerformanceScreen} />
 
       </Stack.Navigator>
     </NavigationContainer>
@@ -202,35 +225,24 @@ export default function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
-  // Container Button Float
   customBtnContainer: {
-    top: -30, // Dorong ke atas (Nimbul)
+    top: -30,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Lingkaran Tombol
   customBtnCircle: {
     width: 66,
     height: 66,
     borderRadius: 33,
     backgroundColor: '#053F5C',
-    // Border putih/abu agar terlihat terpisah dari tab bar
-    borderWidth: 4, 
-    borderColor: '#E9ECEF', // Sesuaikan dengan warna background TabBar
+    borderWidth: 4,
+    borderColor: '#E9ECEF',
     alignItems: 'center',
     justifyContent: 'center',
-    // Shadow
     shadowColor: '#053F5C',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
   },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#053F5C',
-    marginTop: 4,
-  }
 });

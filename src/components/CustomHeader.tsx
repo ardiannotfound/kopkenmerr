@@ -8,6 +8,7 @@ import {
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
 import { useTheme } from '../context/ThemeContext';
+import { CurrentUser } from '../data/Session'; // IMPORT Session untuk cek Role
 
 // Import Fonts
 import { useFonts, Inter_600SemiBold } from '@expo-google-fonts/inter';
@@ -16,52 +17,68 @@ import { Poppins_600SemiBold } from '@expo-google-fonts/poppins';
 interface CustomHeaderProps {
   type: 'home' | 'page';
   userName?: string; 
-  userUnit?: string;
+  userUnit?: string; 
   title?: string;    
   onNotificationPress?: () => void;
+  showNotificationButton?: boolean; 
 }
 
 export default function CustomHeader({ 
   type, 
   userName, 
+  userUnit, 
   title, 
-  onNotificationPress 
+  onNotificationPress,
+  showNotificationButton = false 
 }: CustomHeaderProps) {
   
   const navigation = useNavigation();
   const { isDarkMode, toggleTheme } = useTheme();
+  
+  // Ambil Role User
+  const userRole = CurrentUser.role;
 
   let [fontsLoaded] = useFonts({
     Inter_600SemiBold,
     Poppins_600SemiBold,
   });
 
+  // --- LOGIC NOTIFIKASI ---
+  // 1. Base Logic: Muncul jika 'home' ATAU dipaksa 'showNotificationButton'
+  // 2. Override Logic: Jika GUEST -> SELALU SEMBUNYIKAN
+  const shouldShowNotification = (type === 'home' || showNotificationButton) && userRole !== 'guest';
+
   if (!fontsLoaded) return <View style={styles.placeholder} />;
 
   return (
     <ImageBackground 
       source={require('../../assets/all-header.png')} 
-      style={[styles.headerContainer, type === 'page' && styles.headerPageHeight]}
+      style={styles.headerContainer} 
       resizeMode="cover"
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      {/* --- BARIS 1: Greeting & Right Buttons --- */}
+      {/* === BAGIAN ATAS (Top Row) === */}
       <View style={styles.topRow}>
         
-        {/* KIRI: Greeting (Hanya di Home) */}
-        <View style={styles.greetingContainer}>
-          {type === 'home' && (
-            <Text style={styles.greetingText} numberOfLines={1}>
-              Selamat Datang, {userName || 'Pengguna'}
-            </Text>
+        {/* KIRI ATAS */}
+        <View style={styles.topLeftContainer}>
+          {type === 'home' ? (
+            <View>
+              <Text style={styles.greetingText}>Selamat Datang,</Text>
+              <Text style={styles.userNameText} numberOfLines={1}>{userName || 'Pengguna'}</Text>
+              {userUnit && (
+                <Text style={styles.userUnitText} numberOfLines={1}>{userUnit}</Text> 
+              )}
+            </View>
+          ) : (
+            <View /> 
           )}
         </View>
 
-        {/* KANAN: Action Buttons (Selalu Ada) */}
-        <View style={styles.rightContainer}>
-          
-          {/* Button Dark Mode */}
+        {/* KANAN ATAS */}
+        <View style={styles.topRightContainer}>
+          {/* Dark Mode Button */}
           <TouchableOpacity 
             onPress={toggleTheme} 
             style={styles.circleButton}
@@ -74,23 +91,23 @@ export default function CustomHeader({
             />
           </TouchableOpacity>
 
-          {/* Button Notifikasi */}
-          <TouchableOpacity 
-            onPress={onNotificationPress} 
-            style={styles.circleButton}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications-outline" size={RFValue(18)} color="#FFFFFF" />
-            <View style={styles.notifDot} />
-          </TouchableOpacity>
-
+          {/* Notification Button (Dengan Logic Guest) */}
+          {shouldShowNotification && (
+            <TouchableOpacity 
+              onPress={onNotificationPress} 
+              style={styles.circleButton}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={RFValue(18)} color="#FFFFFF" />
+              <View style={styles.notifDot} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* --- BARIS 2: Back Button & Title (Hanya di Page) --- */}
-      {type === 'page' && (
+      {/* === BAGIAN BAWAH === */}
+      {type === 'page' ? (
         <View style={styles.bottomRow}>
-          
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
             style={styles.backButtonCircle}
@@ -102,8 +119,9 @@ export default function CustomHeader({
           <Text style={styles.pageTitle} numberOfLines={1}>
             {title}
           </Text>
-
         </View>
+      ) : (
+        <View style={{ height: hp('5%') }} /> 
       )}
 
     </ImageBackground>
@@ -112,47 +130,55 @@ export default function CustomHeader({
 
 const styles = StyleSheet.create({
   placeholder: {
-    height: hp('15%'),
+    height: hp('22%'),
     backgroundColor: '#053F5C',
   },
   
-  // Container Utama
   headerContainer: {
     width: wp('100%'),
-    // Tinggi default untuk Home
-    height: hp('15%'), 
-    paddingTop: hp('3%'), 
+    height: hp('22%'), 
+    paddingTop: hp('4%'),
     paddingHorizontal: wp('5%'),
-    justifyContent: 'flex-start', 
-  },
-  
-  // PERBAIKAN: Tinggi header Page ditambah sedikit agar muat
-  headerPageHeight: {
-    height: hp('20%'), // Naik dari 18% ke 20%
+    paddingBottom: hp('2%'),
+    justifyContent: 'space-between', 
+    flexDirection: 'column',
   },
 
-  // --- STYLE BARIS 1 ---
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start', 
     width: '100%',
-    marginBottom: hp('1.5%'),
   },
   
-  greetingContainer: {
+  topLeftContainer: {
     flex: 1, 
     justifyContent: 'center',
+    paddingRight: 10,
   },
+  
   greetingText: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: RFValue(14),
-    color: '#F5F5F5', 
+    fontSize: RFValue(12),
+    color: '#E0E0E0', 
+  },
+  userNameText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: RFValue(18),
+    color: '#FFFFFF',
+    marginTop: -2,
+  },
+  userUnitText: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: RFValue(11), 
+    color: '#81C3D7', 
+    marginTop: -2,
   },
 
-  rightContainer: {
+  topRightContainer: {
     flexDirection: 'row',
     gap: wp('3%'),
+    marginTop: 5, 
   },
 
   circleButton: {
@@ -174,20 +200,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF5252',
   },
 
-  // --- STYLE BARIS 2 (Page Mode) ---
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    // PERBAIKAN: Menambahkan margin top agar turun ke bawah
-    marginTop: hp('2%'), 
+    paddingBottom: hp('1%'), 
   },
 
   backButtonCircle: {
     width: wp('9%'),
     height: wp('9%'),
     borderRadius: wp('4.5%'),
-    backgroundColor: 'rgba(255, 255, 255, 0.63)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.9)', 
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: wp('3%'), 
@@ -195,8 +219,7 @@ const styles = StyleSheet.create({
 
   pageTitle: {
     fontFamily: 'Poppins_600SemiBold',
-    // PERBAIKAN: Font Size diperbesar
-    fontSize: RFValue(25), // Naik dari 18 ke 22
+    fontSize: RFValue(22), 
     color: '#FFFFFF', 
     flex: 1, 
   },

@@ -1,152 +1,395 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList, ScrollView 
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, StatusBar, Linking, Alert 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { MOCK_ARTICLES, Article } from '../../data/mockData';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  widthPercentageToDP as wp, 
+  heightPercentageToDP as hp 
+} from 'react-native-responsive-screen';
+import { RFValue } from 'react-native-responsive-fontsize';
+import { 
+  useFonts, 
+  Poppins_400Regular, 
+  Poppins_500Medium, 
+  Poppins_600SemiBold,
+  Poppins_700Bold
+} from '@expo-google-fonts/poppins';
+import { Inter_400Regular } from '@expo-google-fonts/inter';
+
+import { useTheme } from '../../context/ThemeContext';
+import CustomHeader from '../../components/CustomHeader';
+import { MOCK_ARTICLES } from '../../data/mockData';
 
 export default function InformationScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { colors, isDarkMode } = useTheme();
   
-  // State Filter & Search
+  // State
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'Popular' | 'All' | string>('Popular');
+  const [activeFilter, setActiveFilter] = useState<string | null>(null); // Filter Kategori Aktif
+  const [isViewAll, setIsViewAll] = useState(false);
 
-  // Logic Filtering
-  const getFilteredData = () => {
+  let [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Inter_400Regular,
+  });
+
+  // --- LOGIC DATA ---
+  const getDataToRender = () => {
     let data = MOCK_ARTICLES;
 
-    // 1. Filter by Search Text
+    // 1. Filter Search
     if (searchQuery) {
-      data = data.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()));
+      return data.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
-    // 2. Filter by Category Button
-    if (activeFilter === 'Popular' && !searchQuery) {
-      // Jika mode Popular & tidak ngetik search -> Ambil yg isPopular = true
-      return data.filter(item => item.isPopular);
-    } else if (activeFilter !== 'All' && activeFilter !== 'Popular') {
-      // Jika filter kategori spesifik dipilih
+    // 2. Filter Kategori (Dari Tombol Kotak)
+    if (activeFilter) {
       return data.filter(item => item.category === activeFilter);
     }
     
-    // Jika 'All' atau sedang search -> Kembalikan semua hasil yg cocok
+    // 3. Default (View All atau 4 Terbaru)
+    if (!isViewAll) {
+      return data.slice(0, 4); 
+    }
     return data;
   };
 
-  const categories = ['Pengaduan & Permintaan', 'Proses & Tindak Lanjut', 'Informasi Layanan'];
+  // Handler klik Kategori
+  const handleCategoryPress = (category: string) => {
+    setActiveFilter(category);
+    setSearchQuery(''); // Reset search
+    setIsViewAll(true); // Masuk mode list
+  };
 
-  // Render Item List
-  const renderItem = ({ item }: { item: Article }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => navigation.navigate('InformationDetail', { articleId: item.id })}
-    >
-      <View style={styles.cardContent}>
-        <View style={{flex: 1}}>
-          <Text style={styles.categoryLabel}>{item.category}</Text>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
-      </View>
-    </TouchableOpacity>
-  );
+  // Handler tombol Back/Reset
+  const handleReset = () => {
+    setSearchQuery('');
+    setActiveFilter(null);
+    setIsViewAll(false);
+  };
+
+  const handleWhatsApp = () => {
+    const url = `whatsapp://send?phone=628123456789&text=Halo Helpdesk Siladan...`;
+    Linking.canOpenURL(url).then(supported => {
+      if (supported) Linking.openURL(url);
+      else Alert.alert('Error', 'WhatsApp tidak terinstall.');
+    });
+  };
+
+  if (!fontsLoaded) return null;
+
+  const textColor = isDarkMode ? '#FFFFFF' : '#053F5C';
+  const cardBg = isDarkMode ? '#1E1E1E' : '#FFFFFF';
+  const searchBg = isDarkMode ? '#333333' : '#F5F5F5';
+  const itemBg = isDarkMode ? '#2C2C2C' : '#F8F8F8';
+
+  // Mode Fokus: Jika sedang search atau pilih kategori atau view all
+  const isFocusMode = !!searchQuery || !!activeFilter || isViewAll;
+
+  // Judul List Dinamis
+  const getListTitle = () => {
+    if (searchQuery) return 'Hasil Pencarian';
+    if (activeFilter) return activeFilter; // Nama Kategori
+    if (isViewAll) return 'Semua Pertanyaan';
+    return 'Pertanyaan Terbaru';
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Header Search */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pusat Informasi</Text>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={20} color="#999" style={{marginRight: 10}} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      
+      <CustomHeader 
+        type="page"
+        title={isFocusMode ? "Pencarian" : "Pusat Informasi"}
+      />
+
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
+      >
+        
+        {/* SEARCH BAR */}
+        <View style={[styles.searchBox, { backgroundColor: searchBg }]}>
+          {isFocusMode ? (
+            <TouchableOpacity onPress={handleReset}>
+              <Ionicons name="arrow-back" size={24} color={isDarkMode ? '#AAA' : '#053F5C'} />
+            </TouchableOpacity>
+          ) : (
+            <Ionicons name="search" size={24} color={isDarkMode ? '#AAA' : '#053F5C'} />
+          )}
+          
           <TextInput 
-            placeholder="Cari kendala atau panduan..." 
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder="Cari Pertanyaan atau topik"
+            placeholderTextColor={isDarkMode ? '#888' : 'rgba(85, 86, 87, 0.5)'}
             value={searchQuery}
-            onChangeText={(text) => {
-              setSearchQuery(text);
-              if (text && activeFilter === 'Popular') setActiveFilter('All'); // Auto switch ke All saat ngetik
-            }}
+            onChangeText={setSearchQuery}
           />
+          
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
         </View>
-      </View>
 
-      {/* Filter Buttons (Horizontal Scroll) */}
-      <View style={{ height: 60 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
-          {/* Tombol Reset / Popular */}
-          <TouchableOpacity 
-            style={[styles.filterPill, activeFilter === 'Popular' && styles.filterPillActive]}
-            onPress={() => setActiveFilter('Popular')}
-          >
-            <Text style={[styles.filterText, activeFilter === 'Popular' && styles.filterTextActive]}>Populer</Text>
-          </TouchableOpacity>
+        {/* KATEGORI (Hanya Muncul Jika Tidak Sedang Filter/Search) */}
+        {!isFocusMode && (
+          <>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Bantuan dan Panduan</Text>
+            <View style={styles.categoryContainer}>
+              
+              <TouchableOpacity 
+                style={[styles.catCard, { backgroundColor: cardBg }]}
+                onPress={() => handleCategoryPress('Pengaduan & Permintaan')}
+              >
+                <Ionicons name="ticket-outline" size={32} color="#0E638C" style={{ opacity: 0.71 }} />
+                <Text style={[styles.catText, { color: textColor }]}>Pengaduan & Permintaan</Text>
+              </TouchableOpacity>
 
-          {/* Tombol Kategori Loop */}
-          {categories.map((cat) => (
+              <TouchableOpacity 
+                style={[styles.catCard, { backgroundColor: cardBg }]}
+                onPress={() => handleCategoryPress('Proses & Tindak Lanjut')}
+              >
+                <MaterialCommunityIcons name="check-decagram-outline" size={32} color="#FF9500" />
+                <Text style={[styles.catText, { color: textColor }]}>Proses & Tindak Lanjut</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.catCard, { backgroundColor: cardBg }]}
+                onPress={() => handleCategoryPress('Informasi Layanan')}
+              >
+                <Ionicons name="information-circle" size={32} color="#C64747" />
+                <Text style={[styles.catText, { color: textColor }]}>Informasi Layanan</Text>
+              </TouchableOpacity>
+
+            </View>
+          </>
+        )}
+
+        {/* LIST PERTANYAAN */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
+            {getListTitle()}
+          </Text>
+          
+          {!isFocusMode && (
+            <TouchableOpacity onPress={() => setIsViewAll(true)}>
+              <Text style={styles.seeAllText}>Lihat semua</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.listContainer}>
+          {getDataToRender().map((item) => (
             <TouchableOpacity 
-              key={cat}
-              style={[styles.filterPill, activeFilter === cat && styles.filterPillActive]}
-              onPress={() => setActiveFilter(cat)}
+              key={item.id} 
+              style={[styles.questionItem, { backgroundColor: itemBg }]}
+              onPress={() => navigation.navigate('InformationDetail', { articleId: item.id })}
             >
-              <Text style={[styles.filterText, activeFilter === cat && styles.filterTextActive]}>{cat}</Text>
+              <Text style={[styles.questionText, { color: textColor }]} numberOfLines={2}>
+                {item.title}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={textColor} />
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
+          
+          {getDataToRender().length === 0 && (
+            <Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
+              Tidak ada hasil ditemukan.
+            </Text>
+          )}
+        </View>
 
-      {/* Section Title Logic */}
-      <View style={styles.listHeader}>
-        <Text style={styles.sectionTitle}>
-          {searchQuery ? 'Hasil Pencarian' : activeFilter === 'Popular' ? 'Pertanyaan Populer' : activeFilter === 'All' ? 'Semua Informasi' : activeFilter}
-        </Text>
-        
-        {/* Button Lihat Semua (Hanya muncul jika di mode Popular & tidak sedang search) */}
-        {activeFilter === 'Popular' && !searchQuery && (
-          <TouchableOpacity onPress={() => setActiveFilter('All')}>
-            <Text style={styles.seeAllText}>Lihat Semua</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* List Content */}
-      <FlatList
-        data={getFilteredData()}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={{alignItems:'center', marginTop: 50}}>
-            <Text style={{color:'#999'}}>Tidak ada informasi ditemukan.</Text>
+        {/* FOOTER BANTUAN (HILANG JIKA FOCUS MODE) */}
+        {!isFocusMode && (
+          <View style={styles.footerSection}>
+            <Text style={[styles.footerTitle, { color: textColor }]}>Butuh Bantuan Lebih Lanjut?</Text>
+            <View style={styles.helpButtonRow}>
+              <TouchableOpacity style={styles.helpButtonLeft}>
+                <View style={styles.iconCircleBlack}>
+                  <Ionicons name="chatbubble-ellipses" size={14} color="#FFF" />
+                </View>
+                <Text style={styles.helpButtonTextBlue}>Chat Helpdesk</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.helpButtonRight} onPress={handleWhatsApp}>
+                <View style={styles.iconCircleGreen}>
+                  <Ionicons name="logo-whatsapp" size={14} color="#FFF" />
+                </View>
+                <Text style={styles.helpButtonTextBlue}>Hubungi WhatsApp</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        }
-      />
+        )}
+
+        {/* PADDING EXTRA YANG LEBIH KECIL */}
+        {/* Kurangi dari hp('15%') jadi hp('5%') agar scroll tidak terlalu jauh */}
+        <View style={{ height: hp('5%') }} /> 
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { backgroundColor: '#007AFF', padding: 20, paddingTop: 50, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 15 },
-  searchBox: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 10, padding: 10, alignItems: 'center' },
-  searchInput: { flex: 1, fontSize: 16, color: '#333' },
+  container: { flex: 1 },
+  contentContainer: {
+    paddingHorizontal: wp('6%'),
+    paddingTop: hp('2%'),
+    // paddingBottom dikurangi dari 10% jadi 2% karena sudah ada spacer view
+    paddingBottom: hp('10%'), 
+  },
 
-  filterContainer: { paddingHorizontal: 20, alignItems: 'center', gap: 10 },
-  filterPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#e0e0e0', marginRight: 10 },
-  filterPillActive: { backgroundColor: '#007AFF' },
-  filterText: { color: '#333', fontSize: 13 },
-  filterTextActive: { color: '#fff', fontWeight: 'bold' },
+  // SEARCH BAR
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12, 
+    paddingHorizontal: 15,
+    height: hp('6.5%'),
+    marginBottom: hp('3%'),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontFamily: 'Poppins_700Bold', 
+    fontSize: RFValue(12),
+  },
 
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 10, marginBottom: 5 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333' },
-  seeAllText: { color: '#007AFF', fontSize: 14, fontWeight: '600' },
+  // SECTION TITLES
+  sectionTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: RFValue(14),
+    marginBottom: hp('1.5%'),
+    textAlign: 'left',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp('1.5%'),
+    marginTop: hp('2%'),
+  },
+  seeAllText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: RFValue(12),
+    color: 'rgba(5, 63, 92, 0.72)', 
+  },
 
-  listContent: { padding: 20, paddingTop: 10 },
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', elevation: 2 },
-  cardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' },
-  categoryLabel: { fontSize: 10, color: '#007AFF', fontWeight: 'bold', marginBottom: 4, textTransform: 'uppercase' },
-  cardTitle: { fontSize: 15, fontWeight: '500', color: '#333', lineHeight: 22 },
+  // KATEGORI
+  categoryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  catCard: {
+    width: wp('28%'), 
+    height: wp('28%'), 
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  catText: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: RFValue(10), 
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
+  // LIST
+  listContainer: {
+    gap: hp('1.2%'),
+  },
+  questionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 11, 
+  },
+  questionText: {
+    fontFamily: 'Inter_400Regular', 
+    fontSize: RFValue(12),
+    flex: 1,
+    marginRight: 10,
+  },
+
+  // FOOTER
+  footerSection: {
+    // Kurangi margin top footer agar lebih rapat naik ke atas
+    marginTop: hp('3%'), // Tadinya 4%
+    alignItems: 'center',
+  },
+  footerTitle: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: RFValue(14),
+    marginBottom: hp('2%'),
+    textAlign: 'center',
+  },
+  helpButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 10,
+  },
+  helpButtonLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0E7EF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  helpButtonRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0E7EF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+  iconCircleBlack: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  iconCircleGreen: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#25D366', 
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  helpButtonTextBlue: {
+    fontFamily: 'Poppins_500Medium',
+    fontSize: RFValue(11), 
+    color: '#053F5C',
+  },
 });
