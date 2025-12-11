@@ -1,328 +1,303 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Linking, Platform 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert 
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+
+// --- IMPORTS SYSTEM BARU ---
+import CustomHeader from '../../components/CustomHeader';
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- IMPORTS DATA ---
 import { MOCK_TICKETS } from '../../data/mockData';
-import { CurrentUser } from '../../data/Session';
+
+// --- IMPORTS SVG ---
+import ReopenIcon from '../../../assets/icons/reopen.svg';
+import UlasanIcon from '../../../assets/icons/ulasan.svg';
 
 export default function TicketDetailScreen() {
   const route = useRoute<any>();
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { ticketId } = route.params;
+  const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   
-  // Ambil Role User saat ini
-  const userRole = CurrentUser.role;
-
-  // Cari data tiket
+  const { ticketId } = route.params;
   const ticket = MOCK_TICKETS.find(t => t.id === ticketId);
-  const [workNotes, setWorkNotes] = useState('');
 
-  if (!ticket) return <View style={styles.container}><Text>Tiket tidak ditemukan</Text></View>;
-
-  // --- LOGIC MAPS (NAVIGASI) ---
-  const openMap = () => {
-    if (!ticket.location) {
-      Alert.alert("Info", "Lokasi peta belum diset untuk tiket ini.");
-      return;
+  // Dummy History Data
+  const ticketHistory = [
+    {
+      date: '25 Okt 2025, 18:00',
+      status: 'Selesai',
+      description: 'Masalah telah diselesaikan oleh teknisi dan diverifikasi.',
+      active: true
+    },
+    {
+      date: '25 Okt 2025, 10:00',
+      status: 'Dikerjakan',
+      description: 'Teknisi sedang melakukan perbaikan di lokasi.',
+      active: false
+    },
+    {
+      date: '24 Okt 2025, 08:30',
+      status: 'Pending',
+      description: 'Tiket berhasil dibuat dan masuk antrian verifikasi.',
+      active: false
     }
-    
-    const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
-    const latLng = `${ticket.location.lat},${ticket.location.lng}`;
-    const label = ticket.opd;
-    
-    const url = Platform.select({
-      ios: `${scheme}${label}@${latLng}`,
-      android: `${scheme}${latLng}(${label})`
-    });
+  ];
 
-    if (url) {
-      Linking.openURL(url);
-    } else {
-      Alert.alert("Error", "Tidak dapat membuka aplikasi peta.");
-    }
-  };
+  if (!ticket) return null;
 
-  // --- HANDLERS UNTUK TEKNISI ---
-  const handleStartWork = () => {
-    Alert.alert("Mulai Pengerjaan", "Waktu SLA akan mulai dihitung. Lanjutkan?", [
-      { text: "Batal", style: "cancel" },
-      { text: "Ya, Mulai", onPress: () => {
-        Alert.alert("Sukses", "Status berubah menjadi 'Sedang Dikerjakan'.");
-        navigation.goBack(); 
-      }}
-    ]);
-  };
-
-  const handleFinishWork = () => {
-    if(!workNotes) { Alert.alert("Error", "Mohon isi catatan aktivitas/solusi."); return; }
-    
-    Alert.alert("Selesaikan Tiket", "Pastikan solusi sudah teruji. Tiket akan ditutup.", [
-      { text: "Batal", style: "cancel" },
-      { text: "Selesai", onPress: () => {
-        Alert.alert("Sukses", "Tiket diselesaikan (Resolved).");
-        navigation.goBack();
-      }}
-    ]);
-  };
-
-  // --- HANDLERS UNTUK USER/GUEST ---
+  // --- LOGIC ACTIONS ---
   const handleReopen = () => {
-    Alert.alert(
-      "Reopen Tiket",
-      "Apakah masalah ini muncul kembali? Tiket akan dibuka ulang.",
-      [
-        { text: "Batal", style: "cancel" },
-        { text: "Ya, Reopen", onPress: () => Alert.alert("Sukses", "Status tiket berubah menjadi OPEN.") }
-      ]
-    );
-  };
-
-  const handleChat = () => {
-    navigation.navigate('Chat', { 
-      ticketId: ticket.id, 
-      ticketTitle: ticket.title 
-    });
+    Alert.alert("Reopen Tiket", "Tiket akan dibuka kembali. Lanjutkan?", [
+      { text: "Batal", style: "cancel" },
+      { text: "Ya", onPress: () => navigation.goBack() }
+    ]);
   };
 
   const handleSurvey = () => {
     navigation.navigate('SatisfactionSurvey', { ticketId: ticket.id });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'closed': return '#D32F2F'; 
+      case 'resolved': return '#4FEA17'; 
+      case 'pending': return '#555657'; 
+      case 'in_progress': return '#053F5C'; 
+      default: return colors.primary;
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        {/* 1. HEADER STATUS */}
-        <View style={styles.headerBanner}>
-          <Text style={styles.ticketId}>{ticket.ticketNumber}</Text>
-          <Text style={styles.statusLabel}>{ticket.status.toUpperCase().replace('_', ' ')}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      
+      <CustomHeader 
+        type="page" 
+        title="Detail Tiket" 
+        showNotificationButton={true} 
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* 2. TOP INFO SECTION */}
+        <View style={styles.topInfoContainer}>
+          {/* PERBAIKAN: Align Flex Start (Kiri Atas) */}
+          <View style={{ alignItems: 'flex-start', marginBottom: Spacing.sm }}>
+            <Text style={[styles.typeText, { 
+              color: ticket.type === 'incident' ? '#FF9500' : '#337CAD' 
+            }]}>
+              {ticket.type === 'incident' ? 'Pengaduan' : 'Permintaan'} 
+              <Text style={{ color: colors.text.secondary }}> • {ticket.ticketNumber}</Text>
+            </Text>
+          </View>
+
+          {/* Judul Tiket */}
+          <Text style={[styles.ticketTitle, { color: colors.primary }]}>
+            {ticket.title}
+          </Text>
         </View>
 
-        {/* 2. INDIKATOR SCAN QR (JIKA ADA) */}
-        {ticket.title.includes('Laporan Aset:') && (
-          <View style={styles.qrBadgeContainer}>
-            <Ionicons name="qr-code-outline" size={20} color="#2e7d32" />
-            <Text style={styles.qrBadgeText}>Tiket dibuat melalui Scan QR Aset</Text>
-          </View>
-        )}
-
-        <View style={styles.content}>
+        {/* 3. INFO CARD */}
+        <View style={[styles.card, { backgroundColor: colors.background.card }]}>
           
-          {/* 3. TOMBOL NAVIGASI PETA (MUNCUL JIKA ADA LOKASI) */}
-          {ticket.location && (
-            <TouchableOpacity style={styles.mapButton} onPress={openMap}>
-              <View style={{flex: 1}}>
-                <Text style={styles.mapTitle}>LOKASI INSIDEN</Text>
-                <Text style={styles.mapAddress}>{ticket.location.address}</Text>
-              </View>
-              <View style={styles.mapIconBox}>
-                <Ionicons name="navigate" size={24} color="#fff" />
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {/* 4. CARD DETAIL UTAMA */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Detail Laporan</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Judul:</Text>
-              <Text style={styles.value}>{ticket.title}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Kategori:</Text>
-              <Text style={styles.value}>{ticket.type === 'incident' ? 'Insiden' : 'Permintaan'}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>OPD:</Text>
-              <Text style={styles.value}>{ticket.opd}</Text>
-            </View>
-            {/* Tampilkan Alamat Text juga di sini agar lengkap */}
-            {ticket.location && (
-               <View style={styles.row}>
-                 <Text style={styles.label}>Alamat:</Text>
-                 <Text style={styles.value}>{ticket.location.address}</Text>
-               </View>
-            )}
-            <View style={{marginTop: 10}}>
-              <Text style={styles.label}>Deskripsi:</Text>
-              <Text style={styles.descText}>{ticket.description}</Text>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.primary, fontFamily: FontFamily.poppins.semibold }]}>
+              Status Terkini
+            </Text>
+            <View style={styles.statusBadge}>
+              <Text style={[styles.statusText, { color: getStatusColor(ticket.status) }]}>
+                {ticket.status.toUpperCase().replace('_', ' ')}
+              </Text>
             </View>
           </View>
 
-          {/* 5. AREA KHUSUS TEKNISI (SLA & WORK LOG) */}
-          {userRole === 'technician' && (
-             <View style={styles.card}>
-               <Text style={styles.cardTitle}>Informasi SLA</Text>
-               <View style={styles.row}>
-                 <Text style={styles.label}>Target Respon:</Text>
-                 <Text style={styles.value}>2 Jam</Text>
-               </View>
-               <View style={styles.row}>
-                 <Text style={styles.label}>Target Selesai:</Text>
-                 <Text style={styles.value}>8 Jam (Medium)</Text>
-               </View>
-               {ticket.slaStart && (
-                 <View style={[styles.row, {marginTop: 5}]}>
-                    <Text style={[styles.label, {color: '#2e7d32'}]}>Mulai Kerja:</Text>
-                    <Text style={[styles.value, {color: '#2e7d32'}]}>03 Des 2025, 09:00</Text>
-                 </View>
-               )}
-             </View>
-           )}
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.primary }]}>Dibuat :</Text>
+            <Text style={[styles.infoValue, { color: colors.text.primary }]}>24 Okt 2025</Text>
+          </View>
 
-           {userRole === 'technician' && ticket.status === 'in_progress' && (
-             <View style={styles.card}>
-               <Text style={styles.cardTitle}>Aktivitas Pengerjaan</Text>
-               <Text style={styles.label}>Catatan Solusi / Aktivitas:</Text>
-               <TextInput 
-                 style={styles.inputArea} 
-                 multiline 
-                 placeholder="Jelaskan langkah perbaikan..." 
-                 value={workNotes}
-                 onChangeText={setWorkNotes}
-               />
-               <TouchableOpacity style={styles.uploadBtn}>
-                 <Ionicons name="camera" size={20} color="#007AFF" />
-                 <Text style={{color: '#007AFF', marginLeft: 10}}>Upload Bukti Perbaikan</Text>
-               </TouchableOpacity>
-             </View>
-           )}
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.primary }]}>Pemohon :</Text>
+            <Text style={[styles.infoValue, { color: colors.text.primary }]}>Darren Ardianto</Text>
+          </View>
 
-          {/* 6. TIMELINE STATUS */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Riwayat Status</Text>
-            <View style={styles.timelineItem}>
-              <View style={styles.dotActive} />
-              <View>
-                <Text style={styles.timelineTitle}>Tiket Dibuat</Text>
-                <Text style={styles.timelineDate}>03 Des 2025, 08:00</Text>
-              </View>
-            </View>
-            <View style={styles.timelineLine} />
-            <View style={styles.timelineItem}>
-              <View style={[styles.dotActive, {backgroundColor: ticket.status !== 'pending' ? '#007AFF' : '#ddd'}]} />
-              <View>
-                <Text style={styles.timelineTitle}>Ditugaskan ke Teknisi</Text>
-                <Text style={styles.timelineDate}>{ticket.status !== 'pending' ? '03 Des 2025, 09:30' : '-'}</Text>
-              </View>
-            </View>
+          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+            <Text style={[styles.infoLabel, { color: colors.primary }]}>Email Pemohon :</Text>
+            <Text style={[styles.infoValue, { color: colors.text.primary }]}>ardiantodarren@gmail.com</Text>
           </View>
 
         </View>
+
+        {/* 4. RIWAYAT STATUS */}
+        <Text style={[styles.sectionHeader, { color: colors.primary }]}>
+          Riwayat Status
+        </Text>
+
+        <View style={styles.timelineContainer}>
+          {ticketHistory.map((item, index) => (
+            <View key={index} style={styles.timelineItem}>
+              <View style={styles.timelineLeft}>
+                <View style={[styles.dot, { backgroundColor: index === 0 ? colors.primary : '#ccc' }]} />
+                {index !== ticketHistory.length - 1 && (
+                  <View style={[styles.line, { backgroundColor: '#ddd' }]} />
+                )}
+              </View>
+
+              <View style={styles.timelineContent}>
+                <View style={styles.timelineHeader}>
+                  <Text style={[styles.historyDate, { color: colors.text.secondary }]}>{item.date}</Text>
+                  <Text style={[styles.historyStatus, { color: colors.text.primary }]}>{item.status}</Text>
+                </View>
+                <Text style={[styles.historyDesc, { color: colors.text.secondary }]}>
+                  {item.description}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* 5. DESKRIPSI */}
+        <Text style={[styles.sectionHeader, { color: colors.primary, marginTop: Spacing.lg }]}>
+          Deskripsi
+        </Text>
+        <View style={[styles.descCard, { backgroundColor: colors.background.card }]}>
+          <Text style={[styles.descText, { color: colors.text.secondary }]}>
+            {ticket.description}
+          </Text>
+        </View>
+
+        <View style={{ height: hp(12) }} />
+
       </ScrollView>
 
-      {/* 7. BOTTOM ACTION BAR (Dynamic based on Role) */}
-      <View style={styles.bottomBar}>
+      {/* 6. BOTTOM ACTION BUTTONS */}
+      <View style={[styles.bottomBar, { backgroundColor: colors.background.card }]}>
         
-        {/* A. TOMBOL UNTUK TEKNISI */}
-        {userRole === 'technician' ? (
-          <>
-            <TouchableOpacity style={styles.chatBtn} onPress={handleChat}>
-              <Ionicons name="chatbubble-ellipses-outline" size={24} color="#007AFF" />
-            </TouchableOpacity>
-
-            {ticket.status === 'ready' && (
-              <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#2196f3'}]} onPress={handleStartWork}>
-                <Text style={styles.actionText}>▶ Mulai Kerjakan</Text>
-              </TouchableOpacity>
-            )}
-            
-            {ticket.status === 'in_progress' && (
-              <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#4caf50'}]} onPress={handleFinishWork}>
-                <Text style={styles.actionText}>✓ Selesaikan Tiket</Text>
-              </TouchableOpacity>
-            )}
-
-            {(ticket.status === 'resolved' || ticket.status === 'closed') && (
-              <View style={[styles.actionBtn, {backgroundColor: '#ccc'}]}>
-                 <Text style={styles.actionText}>Tiket Selesai</Text>
-              </View>
-            )}
-            
-            {ticket.status === 'pending' && (
-              <View style={[styles.actionBtn, {backgroundColor: '#ff9800'}]}>
-                 <Text style={styles.actionText}>Menunggu Approval</Text>
-              </View>
-            )}
-          </>
-        ) : (
-          // B. TOMBOL UNTUK PEGAWAI / MASYARAKAT
-          <>
-            <TouchableOpacity style={styles.chatBtn} onPress={handleChat}>
-              <Ionicons name="chatbubble-ellipses-outline" size={24} color="#007AFF" />
-            </TouchableOpacity>
-
-            {ticket.status === 'closed' || ticket.status === 'resolved' ? (
-              <View style={{ flex: 1, flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#d32f2f', flex: 0.4 }]} onPress={handleReopen}>
-                  <Text style={styles.actionText}>Reopen</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFD700', flex: 1 }]} onPress={handleSurvey}>
-                  <Text style={[styles.actionText, { color: '#333' }]}>★ Beri Ulasan</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#ccc'}]} disabled>
-                <Text style={styles.actionText}>Menunggu Proses</Text>
-              </TouchableOpacity>
-            )}
-          </>
+        {/* REOPEN */}
+        {ticket.status === 'closed' && (
+          <TouchableOpacity 
+            style={[styles.btnAction, { backgroundColor: '#2FA84F' }]} 
+            onPress={handleReopen}
+          >
+            <ReopenIcon width={20} height={20} color="#FFF" style={{ marginRight: 6 }} />
+            <Text style={styles.btnTextWhite} numberOfLines={1}>Reopen</Text>
+          </TouchableOpacity>
         )}
+
+        {/* ULASAN */}
+        {(ticket.status === 'resolved' || ticket.status === 'closed') && (
+          <TouchableOpacity 
+            style={[styles.btnAction, { backgroundColor: '#2D7FF9' }]} 
+            onPress={handleSurvey}
+          >
+            <UlasanIcon width={20} height={20} color="#FFF" style={{ marginRight: 6 }} />
+            <Text style={styles.btnTextWhite} numberOfLines={1}>Beri Ulasan</Text>
+          </TouchableOpacity>
+        )}
+
       </View>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  headerBanner: { backgroundColor: '#007AFF', padding: 20, paddingTop: 10, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  ticketId: { color: '#fff', fontSize: 14, opacity: 0.8 },
-  statusLabel: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginTop: 5 },
-  
-  content: { padding: 20 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
-  cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 5 },
-  
-  row: { flexDirection: 'row', marginBottom: 8 },
-  label: { width: 100, color: '#666', fontSize: 14 },
-  value: { flex: 1, color: '#333', fontWeight: '500', fontSize: 14 },
-  descText: { color: '#333', lineHeight: 20, marginTop: 5, backgroundColor: '#fafafa', padding: 10, borderRadius: 8 },
+  container: { flex: 1 },
+  scrollContent: { padding: Spacing.lg },
 
-  // Timeline Styles
-  timelineItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 0 },
-  timelineLine: { height: 20, width: 2, backgroundColor: '#ddd', marginLeft: 6, marginVertical: 2 },
-  dotActive: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#28a745', marginRight: 10 },
-  timelineTitle: { fontSize: 14, fontWeight: '600', color: '#333' },
-  timelineDate: { fontSize: 12, color: '#999' },
-
-  // Bottom Bar Styles
-  bottomBar: { backgroundColor: '#fff', padding: 15, flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#eee', alignItems: 'center' },
-  chatBtn: { marginRight: 15, padding: 10, borderRadius: 8, backgroundColor: '#f0f7ff' }, 
-  actionBtn: { flex: 1, backgroundColor: '#d32f2f', padding: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  actionText: { color: '#fff', fontWeight: 'bold' },
-
-  // QR Badge
-  qrBadgeContainer: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#e8f5e9', padding: 10, marginHorizontal: 20, marginTop: -20,
-    borderRadius: 8, borderWidth: 1, borderColor: '#c8e6c9', elevation: 3, shadowColor: '#000', shadowOpacity: 0.1
+  // --- TOP INFO ---
+  topInfoContainer: { marginBottom: Spacing.md },
+  typeText: { fontFamily: FontFamily.poppins.medium, fontSize: FontSize.sm },
+  ticketTitle: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.lg,
+    textAlign: 'center', // Tetap center biar rapi
+    marginBottom: Spacing.sm,
   },
-  qrBadgeText: { marginLeft: 10, color: '#2e7d32', fontWeight: '600' },
 
-  // Map Button
-  mapButton: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 15,
-    elevation: 2, borderLeftWidth: 5, borderLeftColor: '#f57c00'
+  // --- INFO CARD ---
+  card: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    ...Shadow.sm,
+    marginBottom: Spacing.xl,
   },
-  mapTitle: { fontSize: 12, color: '#f57c00', fontWeight: 'bold', textTransform: 'uppercase' },
-  mapAddress: { fontSize: 14, fontWeight: 'bold', color: '#333', marginTop: 2 },
-  mapIconBox: { backgroundColor: '#f57c00', padding: 8, borderRadius: 8 },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  infoLabel: { fontFamily: FontFamily.poppins.regular, fontSize: FontSize.sm, flex: 1 },
+  infoValue: {
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.sm,
+    flex: 1.5,
+    textAlign: 'right',
+  },
+  statusBadge: {},
+  statusText: { fontFamily: FontFamily.poppins.bold, fontSize: FontSize.sm },
 
-  // Technician Form
-  inputArea: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, minHeight: 80, textAlignVertical: 'top', backgroundColor: '#fafafa', marginBottom: 10 },
-  uploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 10, borderWidth: 1, borderColor: '#007AFF', borderStyle: 'dashed', borderRadius: 8 }
+  // --- HEADERS ---
+  sectionHeader: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.lg,
+    marginBottom: Spacing.md,
+    textAlign: 'left',
+  },
+
+  // --- TIMELINE ---
+  timelineContainer: { paddingLeft: Spacing.xs },
+  timelineItem: { flexDirection: 'row', marginBottom: 0 },
+  timelineLeft: { alignItems: 'center', width: 20, marginRight: Spacing.md },
+  dot: { width: 12, height: 12, borderRadius: 6, zIndex: 1 },
+  line: { width: 2, flex: 1, marginTop: -2, marginBottom: -2 },
+  timelineContent: { flex: 1, paddingBottom: Spacing.lg },
+  timelineHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  historyDate: { fontFamily: FontFamily.poppins.regular, fontSize: 10 },
+  historyStatus: { fontFamily: FontFamily.poppins.bold, fontSize: FontSize.sm },
+  historyDesc: { fontFamily: FontFamily.poppins.regular, fontSize: FontSize.sm, lineHeight: 20 },
+
+  // --- DESKRIPSI ---
+  descCard: { padding: Spacing.md, borderRadius: BorderRadius.lg, ...Shadow.sm },
+  descText: { fontFamily: FontFamily.poppins.regular, fontSize: FontSize.sm, lineHeight: 22 },
+
+  // --- BOTTOM BAR ---
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: Spacing.lg,
+    paddingBottom: hp(4),
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    flexDirection: 'row',
+    gap: Spacing.md, // Jarak antar tombol
+  },
+  
+  // GAYA TOMBOL UNIVERSAL (Responsive Width)
+  btnAction: {
+    flex: 1, // Agar kedua tombol membagi rata lebar layar
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: 5, // Biar teks gak mepet pinggir tombol
+  },
+  btnTextWhite: {
+    fontFamily: FontFamily.poppins.semibold,
+    color: '#FFF',
+    fontSize: FontSize.sm, // Sedikit dikecilkan agar muat
+    flexShrink: 1, // Agar teks tidak overflow
+  },
 });

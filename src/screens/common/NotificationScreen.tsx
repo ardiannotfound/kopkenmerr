@@ -3,37 +3,25 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, StatusBar 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { 
-  useFonts, 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold 
-} from '@expo-google-fonts/poppins';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// Imports
-import { MOCK_NOTIFICATIONS, NotificationItem } from '../../data/mockData';
-import { CurrentUser } from '../../data/Session';
-import { useTheme } from '../../context/ThemeContext_OLD';
+// --- IMPORTS SYSTEM BARU ---
 import CustomHeader from '../../components/CustomHeader';
+import { useTheme } from '../../hooks/useTheme';
+import { useAuthStore } from '../../store/authStore';
+import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- IMPORTS DATA ---
+// Pastikan file ini ada
+import { MOCK_NOTIFICATIONS, NotificationItem } from '../../data/mockData';
 
 export default function NotificationScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { colors, isDarkMode } = useTheme();
-  const userRole = CurrentUser.role;
-
-  // Fonts
-  let [fontsLoaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-  });
+  const navigation = useNavigation<any>();
+  
+  // 1. Theme & Auth
+  const { colors, isDark } = useTheme();
+  const { user, isGuest } = useAuthStore(); 
 
   // State
   const [activeFilter, setActiveFilter] = useState<'Semua' | 'Permintaan' | 'Pengaduan'>('Semua');
@@ -41,8 +29,8 @@ export default function NotificationScreen() {
 
   // --- LOGIC FILTER ---
   const getFilteredData = () => {
-    // 1. Jika Masyarakat, tampilkan semua (tanpa filter UI)
-    if (userRole === 'guest') return notifications;
+    // 1. Jika Masyarakat (Tamu), tampilkan semua (tanpa filter UI)
+    if (isGuest) return notifications;
 
     // 2. Jika Pegawai/Teknisi, filter berdasarkan Tab
     if (activeFilter === 'Semua') return notifications;
@@ -60,28 +48,20 @@ export default function NotificationScreen() {
     );
     setNotifications(updatedList);
 
-    // Navigasi
+    // Navigasi ke Detail
     if (item.ticketId) {
       navigation.navigate('TicketDetail', { ticketId: item.ticketId });
     }
   };
 
-  if (!fontsLoaded) return null;
-
-  // --- RENDER CARD ---
+  // --- RENDER CARD NOTIFIKASI ---
   const renderItem = ({ item }: { item: NotificationItem }) => {
-    // Logic Background Card
-    // Unread: Soft Blue (Light) / Dark Slate (Dark)
-    // Read: White (Light) / Dark Grey (Dark)
+    // Logic Background Card:
+    // Read -> Warna Card Default (Putih/Abu Gelap)
+    // Unread -> Warna Highlight Tipis (Biru Muda/Abu Terang)
     const cardBg = item.isRead 
-      ? colors.card 
-      : (isDarkMode ? '#1E293B' : '#F0F9FF');
-
-    // Logic Warna Teks 
-    // Light Mode: 053F5C (Sesuai Request)
-    // Dark Mode: White (Agar terbaca)
-    const textColor = isDarkMode ? '#FFFFFF' : '#053F5C';
-    const subTextColor = isDarkMode ? '#CCCCCC' : '#053F5C'; // Tetap base color tapi nanti opacity main di style
+      ? colors.background.card 
+      : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#F0F9FF'); // Highlight unread
 
     return (
       <TouchableOpacity 
@@ -89,33 +69,34 @@ export default function NotificationScreen() {
           styles.card, 
           { 
             backgroundColor: cardBg, 
-            borderColor: isDarkMode ? '#444' : '#E5E7EB' 
+            borderColor: colors.border.light 
           }
         ]}
         onPress={() => handlePress(item)}
         activeOpacity={0.7}
       >
-        {/* ROW 1: JENIS TICKET & ID + DOT UNREAD */}
+        {/* HEADER CARD */}
         <View style={styles.cardHeaderRow}>
-          <Text style={[styles.cardType, { color: textColor }]}>
-            {item.type === 'incident' ? 'Pengaduan' : 'Permintaan'} - #{item.ticketId ? 'TIKET' : 'SYSTEM'}
+          <Text style={[styles.cardType, { color: colors.primary }]}>
+            {item.type === 'incident' ? 'Pengaduan' : 'Permintaan'} 
+            <Text style={{ color: colors.text.tertiary }}> • #{item.ticketId || 'SYS'}</Text>
           </Text>
           
           {/* Dot Indikator Belum Dibaca */}
-          {!item.isRead && <View style={styles.unreadDot} />}
+          {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.accent }]} />}
         </View>
 
-        {/* ROW 2: JUDUL PENGAJUAN */}
-        <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>
+        {/* JUDUL */}
+        <Text style={[styles.cardTitle, { color: colors.text.primary }]} numberOfLines={1}>
           {item.title}
         </Text>
 
-        {/* ROW 3: SUBTITLE & WAKTU */}
+        {/* PESAN & WAKTU */}
         <View style={styles.cardFooterRow}>
-          <Text style={[styles.cardSubtitle, { color: subTextColor }]} numberOfLines={2}>
+          <Text style={[styles.cardSubtitle, { color: colors.text.secondary }]} numberOfLines={2}>
             {item.message}
           </Text>
-          <Text style={[styles.cardTime, { color: subTextColor }]}>
+          <Text style={[styles.cardTime, { color: colors.text.tertiary }]}>
             {item.createdAt}
           </Text>
         </View>
@@ -124,41 +105,52 @@ export default function NotificationScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <StatusBar 
+        barStyle={isDark ? "light-content" : "dark-content"} 
+        backgroundColor="transparent" 
+        translucent 
+      />
       
-      {/* 1. HEADER (Page Mode) */}
+      {/* 1. HEADER */}
       <CustomHeader 
         type="page"
         title="Notifikasi"
+        showNotificationButton={false} // Sudah di halaman notif
       />
 
       <View style={styles.contentContainer}>
         
         {/* 2. FILTER BUBBLES (Hanya Pegawai/Teknisi) */}
-        {userRole !== 'guest' && (
+        {!isGuest && (
           <View style={styles.filterWrapper}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {['Semua', 'Permintaan', 'Pengaduan'].map((f) => {
                 const isActive = activeFilter === f;
+                
                 // Warna Bubble
-                const bubbleBg = isActive ? '#0D3B66' : (isDarkMode ? '#333' : '#FFFFFF');
-                // Warna Teks Bubble
-                const bubbleText = isActive ? '#FFFFFF' : (isDarkMode ? '#FFF' : '#4B5563');
+                const bubbleBg = isActive 
+                  ? colors.primary // Biru jika aktif
+                  : colors.background.card; // Putih/Abu jika tidak aktif
+                
+                const bubbleBorder = isActive 
+                  ? colors.primary 
+                  : colors.border.light;
+
+                const bubbleTextColor = isActive 
+                  ? colors.white 
+                  : colors.text.secondary;
 
                 return (
                   <TouchableOpacity 
                     key={f}
                     style={[
                       styles.filterBubble, 
-                      { backgroundColor: bubbleBg }
+                      { backgroundColor: bubbleBg, borderColor: bubbleBorder }
                     ]}
                     onPress={() => setActiveFilter(f as any)}
                   >
-                    <Text style={[
-                      styles.filterText, 
-                      { color: bubbleText }
-                    ]}>
+                    <Text style={[styles.filterText, { color: bubbleTextColor }]}>
                       {f === 'Semua' ? 'Semua Notifikasi' : f}
                     </Text>
                   </TouchableOpacity>
@@ -177,12 +169,12 @@ export default function NotificationScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={60} color="#ccc" />
-              <Text style={[styles.emptyText, { color: isDarkMode ? '#FFF' : '#333' }]}>
+              <Ionicons name="notifications-off-outline" size={60} color={colors.text.tertiary} />
+              <Text style={[styles.emptyText, { color: colors.text.primary }]}>
                 Belum Ada Notifikasi
               </Text>
-              <Text style={[styles.emptySub, { color: isDarkMode ? '#AAA' : '#999' }]}>
-                Saat ini belum ada notifikasi. Semua notifikasi yang kami kirim tampil di sini!
+              <Text style={[styles.emptySub, { color: colors.text.secondary }]}>
+                Saat ini belum ada notifikasi untuk Anda.
               </Text>
             </View>
           }
@@ -198,52 +190,40 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    // Kita tidak overlap negatif disini agar header tidak tertutup filter
-    // Biarkan mengalir di bawah header
   },
 
   // FILTER SECTION
   filterWrapper: {
-    paddingVertical: hp('2%'),
-    paddingHorizontal: wp('5%'),
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   filterBubble: {
     paddingHorizontal: 20,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: BorderRadius.xl, // Lebih bulat
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB', // Border tipis
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    ...Shadow.sm, // Shadow tipis
   },
   filterText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(12),
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.xs,
   },
 
   // LIST SECTION
   listContent: {
-    paddingHorizontal: wp('5%'),
-    paddingBottom: hp('5%'),
-    paddingTop: hp('1%'),
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: hp(5),
+    paddingTop: Spacing.sm,
   },
 
   // CARD STYLE
   card: {
-    padding: 16,
-    borderRadius: 12,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    marginBottom: hp('1.5%'),
-    // Shadow
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    marginBottom: Spacing.sm,
+    ...Shadow.sm,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -252,56 +232,54 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardType: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: RFValue(12),
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.xs,
   },
-  
-  // Dot Indikator Unread (3B82F6)
   unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#3B82F6', 
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   
   cardTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(14),
-    marginBottom: 6,
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.md, // Lebih besar dikit dari type
+    marginBottom: 4,
   },
 
   cardFooterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginTop: 4,
   },
   cardSubtitle: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: RFValue(12),
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.sm,
     flex: 1, 
     marginRight: 15,
+    lineHeight: 20,
   },
   cardTime: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: RFValue(10),
-    opacity: 0.6, // 60% Opacity sesuai request
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: 10,
     marginTop: 2,
   },
 
   // EMPTY STATE
   emptyState: {
     alignItems: 'center',
-    marginTop: hp('10%'),
+    marginTop: hp(10),
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(16),
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.lg,
     marginTop: 15,
   },
   emptySub: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: RFValue(12),
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.sm,
     textAlign: 'center',
     marginTop: 5,
   },

@@ -45,6 +45,28 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 1500);
   };
 
+  // --- LOGIC WARNA ICON & BACKGROUND ---
+  // Agar tidak aneh di Dark Mode
+  const getGridStyles = () => {
+    if (isDark) {
+      return {
+        // Dark Mode: Icon Putih, Background Abu Transparan
+        iconColor: '#FFFFFF',
+        bgPengaduan: 'rgba(255, 255, 255, 0.1)',
+        bgPermintaan: 'rgba(255, 255, 255, 0.1)',
+      };
+    } else {
+      return {
+        // Light Mode: Icon Biru Gelap (Primary), Background Biru/Cyan Muda Cerah
+        iconColor: colors.primary, 
+        bgPengaduan: '#E3F2FD', // Biru Muda banget
+        bgPermintaan: '#E0F7FA', // Cyan Muda banget
+      };
+    }
+  };
+
+  const gridStyle = getGridStyles();
+
   // --- RENDER SECTION: PEGAWAI (Grid + Stats) ---
   const renderPegawaiView = () => (
     <>
@@ -54,13 +76,21 @@ export default function HomeScreen() {
 
       {/* GRID MENU */}
       <View style={styles.gridContainer}>
+        
         {/* Tombol Pengaduan */}
         <TouchableOpacity 
           style={styles.gridItem} 
           onPress={() => navigation.navigate('CreateIncident')}
         >
-          <View style={[styles.gridIconBox, { backgroundColor: colors.ticket.pengaduan.background }]}>
-            <PengaduanIcon width={32} height={32} color={colors.ticket.pengaduan.text} />
+          <View style={[
+            styles.gridIconBox, 
+            { backgroundColor: gridStyle.bgPengaduan }
+          ]}>
+            <PengaduanIcon 
+              width={32} 
+              height={32} 
+              color={gridStyle.iconColor} 
+            />
           </View>
           <Text style={[styles.gridLabel, { color: colors.text.primary }]}>Pengaduan</Text>
         </TouchableOpacity>
@@ -70,11 +100,19 @@ export default function HomeScreen() {
           style={styles.gridItem} 
           onPress={() => navigation.navigate('CreateRequest')}
         >
-          <View style={[styles.gridIconBox, { backgroundColor: colors.ticket.permintaan.background }]}>
-            <PermintaanIcon width={32} height={32} color={colors.ticket.permintaan.text} />
+          <View style={[
+            styles.gridIconBox, 
+            { backgroundColor: gridStyle.bgPermintaan }
+          ]}>
+            <PermintaanIcon 
+              width={32} 
+              height={32} 
+              color={gridStyle.iconColor} 
+            />
           </View>
           <Text style={[styles.gridLabel, { color: colors.text.primary }]}>Permintaan</Text>
         </TouchableOpacity>
+
       </View>
 
       {/* STATISTIK TIKET */}
@@ -85,21 +123,21 @@ export default function HomeScreen() {
       <View style={styles.statsContainer}>
         {/* Card Menunggu */}
         <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.waiting}</Text>
+          <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.waiting}</Text>
           <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
           <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Menunggu Persetujuan</Text>
         </View>
 
         {/* Card Diproses */}
         <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.process}</Text>
+          <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.process}</Text>
           <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
           <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Diproses</Text>
         </View>
 
         {/* Card Selesai */}
         <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
-          <Text style={[styles.statNumber, { color: colors.primary }]}>{stats.done}</Text>
+          <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.done}</Text>
           <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
           <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Selesai</Text>
         </View>
@@ -121,8 +159,15 @@ export default function HomeScreen() {
           style={[styles.listCard, { backgroundColor: colors.background.card }]}
           onPress={() => navigation.navigate('CreateIncident')}
         >
-          <View style={[styles.listIconBox, { backgroundColor: colors.ticket.pengaduan.background }]}>
-            <PengaduanIcon width={28} height={28} color={colors.ticket.pengaduan.text} />
+          <View style={[
+            styles.listIconBox, 
+            { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E3F2FD' }
+          ]}>
+            <PengaduanIcon 
+              width={28} 
+              height={28} 
+              color={isDark ? '#FFF' : colors.primary} 
+            />
           </View>
           <View style={styles.listTextContainer}>
             <Text style={[styles.listTitle, { color: colors.text.primary }]}>Buat Pengaduan</Text>
@@ -138,8 +183,15 @@ export default function HomeScreen() {
           style={[styles.listCard, { backgroundColor: colors.background.card }]}
           onPress={() => navigation.navigate('Info')} // Asumsi InfoScreen adalah FAQ
         >
-          <View style={[styles.listIconBox, { backgroundColor: colors.ticket.permintaan.background }]}>
-            <FAQIcon width={28} height={28} color={colors.ticket.permintaan.text} />
+          <View style={[
+            styles.listIconBox, 
+            { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E0F7FA' }
+          ]}>
+            <FAQIcon 
+              width={28} 
+              height={28} 
+              color={isDark ? '#FFF' : colors.primary} 
+            />
           </View>
           <View style={styles.listTextContainer}>
             <Text style={[styles.listTitle, { color: colors.text.primary }]}>Pertanyaan Umum (FAQ)</Text>
@@ -170,14 +222,9 @@ export default function HomeScreen() {
               </Text>
               
               <TouchableOpacity onPress={() => logout()}> 
-                {/* ^^^ GANTI navigation.replace JADI logout() */}
-                
                 <Text style={[
                   styles.guestLink, 
                   { 
-                    // LOGIC WARNA:
-                    // Dark Mode -> Putih (biar kelihatan di background gelap)
-                    // Light Mode -> Biru Primary
                     color: isDark ? colors.white : colors.primary 
                   }
                 ]}>

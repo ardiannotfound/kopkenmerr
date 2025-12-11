@@ -17,7 +17,6 @@ import { MOCK_TICKETS, Ticket } from '../../data/mockData';
 
 // --- IMPORTS ICONS SVG ---
 import KananIcon from '../../../assets/icons/kanan.svg'; 
-// (Pastikan icon ini ada, kalau belum ada ganti dengan Ionicons di kode bawah)
 
 export default function TicketListScreen() {
   const navigation = useNavigation<any>();
@@ -29,6 +28,10 @@ export default function TicketListScreen() {
   const [guestSearchResult, setGuestSearchResult] = useState<Ticket[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [activeTab, setActiveTab] = useState<'incident' | 'request'>('incident');
+
+  // Helper Warna Teks Dinamis (Biru di Light, Putih di Dark)
+  // Gunakan ini untuk teks yang ingin berwarna "Primary" tapi harus Putih di Dark Mode
+  const dynamicPrimaryTextColor = isDark ? colors.white : colors.primary;
 
   // --- LOGIC MASYARAKAT ---
   const handleGuestSearch = () => {
@@ -54,13 +57,13 @@ export default function TicketListScreen() {
       return { 
         label: 'Pengaduan', 
         color: '#FF9500', 
-        bg: 'rgba(255, 149, 0, 0.15)' 
+        bg: isDark ? 'rgba(255, 149, 0, 0.2)' : 'rgba(255, 149, 0, 0.15)' 
       }; 
     }
     return { 
       label: 'Permintaan', 
       color: '#337CAD', 
-      bg: 'rgba(51, 124, 173, 0.15)' 
+      bg: isDark ? 'rgba(51, 124, 173, 0.3)' : 'rgba(51, 124, 173, 0.15)' 
     }; 
   };
 
@@ -68,9 +71,9 @@ export default function TicketListScreen() {
     switch (status) {
       case 'closed': return { label: 'Closed', color: '#D32F2F', icon: 'close-circle' };
       case 'resolved': return { label: 'Selesai', color: '#4FEA17', icon: 'checkmark-circle' };
-      case 'pending': return { label: 'Pending', color: '#555657', icon: 'time' };
+      case 'pending': return { label: 'Pending', color: isDark ? '#AAA' : '#555657', icon: 'time' };
       case 'in_progress': 
-      case 'assigned': return { label: 'Dikerjakan', color: '#053F5C', icon: 'hammer' };
+      case 'assigned': return { label: 'Dikerjakan', color: isDark ? '#4FC3F7' : '#053F5C', icon: 'hammer' };
       default: return { label: status, color: '#333', icon: 'help-circle' };
     }
   };
@@ -95,8 +98,8 @@ export default function TicketListScreen() {
                 {typeInfo.label}
               </Text>
             </View>
-            {/* Judul */}
-            <Text style={[styles.ticketTitle, { color: colors.primary }]} numberOfLines={2}>
+            {/* Judul: Pakai text.primary agar Putih di Dark Mode */}
+            <Text style={[styles.ticketTitle, { color: colors.text.primary }]} numberOfLines={2}>
               {item.title}
             </Text>
           </View>
@@ -104,14 +107,15 @@ export default function TicketListScreen() {
           {/* Nomor Tiket */}
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Nomor Tiket</Text>
-            <Text style={[styles.ticketNumber, { color: colors.primary }]}>{item.ticketNumber}</Text>
+            {/* Nomor: Pakai text.primary agar Putih di Dark Mode */}
+            <Text style={[styles.ticketNumber, { color: colors.text.primary }]}>{item.ticketNumber}</Text>
           </View>
         </View>
 
         {/* Divider */}
         <View style={[styles.divider, { backgroundColor: colors.border.light }]} />
 
-        {/* BAGIAN BAWAH (3 ZONA: START - CENTER - END) */}
+        {/* BAGIAN BAWAH (3 ZONA) */}
         <View style={styles.cardBottom}>
           
           {/* 1. START: Status */}
@@ -135,10 +139,7 @@ export default function TicketListScreen() {
 
           {/* 3. END: Icon Panah */}
           <View style={styles.colEnd}>
-             {/* Jika punya SVG KananIcon, pakai ini: */}
              <KananIcon width={24} height={24} color={colors.text.tertiary} />
-             {/* Jika tidak, pakai Ionicons: */}
-             {/* <Ionicons name="chevron-forward" size={24} color={colors.text.tertiary} /> */}
           </View>
 
         </View>
@@ -190,7 +191,6 @@ export default function TicketListScreen() {
                   </View>
                 ))
               ) : (
-                // EMPTY STATE CENTERED
                 <View style={styles.emptyStateContainer}>
                   <Text style={{ color: colors.text.secondary }}>Tiket tidak ditemukan.</Text>
                 </View>
@@ -202,20 +202,37 @@ export default function TicketListScreen() {
       ) : (
         // === PEGAWAI VIEW ===
         <View style={styles.contentPegawai}>
-          {/* TAB BUTTONS (Gaya biasa, bukan card) */}
+          {/* TAB BUTTONS */}
           <View style={[styles.tabContainer, { backgroundColor: colors.background.card }]}>
+            
+            {/* Tab Pengaduan */}
             <TouchableOpacity 
-              style={[styles.tabBtn, activeTab === 'incident' && { borderBottomColor: colors.primary }]} 
+              style={[
+                styles.tabBtn, 
+                activeTab === 'incident' && { borderBottomColor: dynamicPrimaryTextColor } 
+              ]} 
               onPress={() => setActiveTab('incident')}
             >
-              <Text style={[styles.tabText, { color: activeTab === 'incident' ? colors.primary : colors.text.secondary }]}>Pengaduan</Text>
+              <Text style={[
+                styles.tabText, 
+                { color: activeTab === 'incident' ? dynamicPrimaryTextColor : colors.text.secondary }
+              ]}>Pengaduan</Text>
             </TouchableOpacity>
+            
+            {/* Tab Permintaan */}
             <TouchableOpacity 
-              style={[styles.tabBtn, activeTab === 'request' && { borderBottomColor: colors.primary }]} 
+              style={[
+                styles.tabBtn, 
+                activeTab === 'request' && { borderBottomColor: dynamicPrimaryTextColor } 
+              ]} 
               onPress={() => setActiveTab('request')}
             >
-              <Text style={[styles.tabText, { color: activeTab === 'request' ? colors.primary : colors.text.secondary }]}>Permintaan</Text>
+              <Text style={[
+                styles.tabText, 
+                { color: activeTab === 'request' ? dynamicPrimaryTextColor : colors.text.secondary }
+              ]}>Permintaan</Text>
             </TouchableOpacity>
+
           </View>
 
           <FlatList
@@ -241,7 +258,7 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.lg },
   contentPegawai: { flex: 1 },
 
-  // --- CARD STYLING ---
+  // --- CARD STYLE ---
   card: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
@@ -283,24 +300,24 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
   },
 
-  // --- BOTTOM LAYOUT (3 KOLOM) ---
+  // --- BOTTOM LAYOUT ---
   cardBottom: {
     flexDirection: 'row',
-    alignItems: 'flex-end', // Agar sejajar di bawah
+    alignItems: 'flex-end',
   },
   colStart: {
-    flex: 2, // Kiri Lebar
+    flex: 2,
     alignItems: 'flex-start',
   },
   colCenter: {
-    flex: 2, // Tengah Lebar
-    alignItems: 'center', // Center Text
+    flex: 2,
+    alignItems: 'center',
   },
   colEnd: {
-    flex: 1, // Kanan Sempit (Cuma icon)
+    flex: 1,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    paddingBottom: 2, // Micro adjustment biar sejajar mata
+    paddingBottom: 2,
   },
   
   statusRow: {
@@ -314,11 +331,11 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontFamily: FontFamily.poppins.medium,
-    fontSize: FontSize.xs, // Tanggal agak kecil
+    fontSize: FontSize.xs,
     marginTop: 2,
   },
 
-  // --- GUEST SEARCH ---
+  // --- SEARCH & TABS ---
   searchBox: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.xl,
@@ -363,16 +380,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     marginBottom: Spacing.sm,
   },
-  
-  // --- EMPTY STATE CENTERED ---
   emptyStateContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.xl * 2, // Turun agak jauh
+    marginTop: Spacing.xl * 2,
     width: '100%',
   },
-
-  // --- PEGAWAI TAB ---
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
