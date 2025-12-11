@@ -15,9 +15,9 @@ import { FontFamily, FontSize } from '../../styles/typography';
 // --- IMPORTS DATA ---
 import { MOCK_TICKETS, Ticket } from '../../data/mockData'; 
 
-// --- IMPORTS ICONS SVG (Pastikan file ada) ---
-import KananIcon from '../../../assets/icons/kanan.svg';
-// Gunakan Ionicons sementara jika SVG status belum lengkap, atau import SVG status disini
+// --- IMPORTS ICONS SVG ---
+import KananIcon from '../../../assets/icons/kanan.svg'; 
+// (Pastikan icon ini ada, kalau belum ada ganti dengan Ionicons di kode bawah)
 
 export default function TicketListScreen() {
   const navigation = useNavigation<any>();
@@ -54,7 +54,7 @@ export default function TicketListScreen() {
       return { 
         label: 'Pengaduan', 
         color: '#FF9500', 
-        bg: 'rgba(255, 149, 0, 0.15)' // Background terang
+        bg: 'rgba(255, 149, 0, 0.15)' 
       }; 
     }
     return { 
@@ -70,7 +70,7 @@ export default function TicketListScreen() {
       case 'resolved': return { label: 'Selesai', color: '#4FEA17', icon: 'checkmark-circle' };
       case 'pending': return { label: 'Pending', color: '#555657', icon: 'time' };
       case 'in_progress': 
-      case 'assigned': return { label: 'Dikerjakan Teknisi', color: '#053F5C', icon: 'hammer' };
+      case 'assigned': return { label: 'Dikerjakan', color: '#053F5C', icon: 'hammer' };
       default: return { label: status, color: '#333', icon: 'help-circle' };
     }
   };
@@ -89,57 +89,56 @@ export default function TicketListScreen() {
         {/* BAGIAN ATAS */}
         <View style={styles.cardTop}>
           <View style={{ flex: 1, paddingRight: 10 }}>
-            {/* 1. Label Tipe dengan Background Rounded */}
+            {/* Badge Tipe */}
             <View style={[styles.typeBadge, { backgroundColor: typeInfo.bg }]}>
               <Text style={[styles.typeText, { color: typeInfo.color }]}>
                 {typeInfo.label}
               </Text>
             </View>
-            
-            {/* Judul Tiket */}
-            <Text style={[styles.ticketTitle, { color: colors.primary }]}>
+            {/* Judul */}
+            <Text style={[styles.ticketTitle, { color: colors.primary }]} numberOfLines={2}>
               {item.title}
             </Text>
           </View>
 
-          {/* Nomor Tiket (Kanan) */}
+          {/* Nomor Tiket */}
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Nomor Tiket</Text>
             <Text style={[styles.ticketNumber, { color: colors.primary }]}>{item.ticketNumber}</Text>
           </View>
         </View>
 
-        {/* GARIS PEMBATAS */}
+        {/* Divider */}
         <View style={[styles.divider, { backgroundColor: colors.border.light }]} />
 
-        {/* BAGIAN BAWAH: 3 Kolom Grid */}
+        {/* BAGIAN BAWAH (3 ZONA: START - CENTER - END) */}
         <View style={styles.cardBottom}>
           
-          {/* KOLOM 1: Status Terkini */}
-          <View style={styles.statusCol}>
+          {/* 1. START: Status */}
+          <View style={styles.colStart}>
             <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Status Terkini</Text>
             <View style={styles.statusRow}>
-              <Ionicons name={statusInfo.icon as any} size={16} color={statusInfo.color} style={{ marginRight: 5 }} />
+              <Ionicons name={statusInfo.icon as any} size={16} color={statusInfo.color} style={{ marginRight: 4 }} />
               <Text style={[styles.statusValue, { color: statusInfo.color }]} numberOfLines={1}>
                 {statusInfo.label}
               </Text>
             </View>
           </View>
 
-          {/* KOLOM 2: Spacer (Flexible) */}
-          <View style={{ flex: 1 }} />
-
-          {/* KOLOM 3: Diperbarui & Icon Kanan */}
-          <View style={styles.dateCol}>
-            <View style={styles.updatedHeader}>
-              <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Diperbarui</Text>
-              <View style={styles.chevronBox}>
-                 <KananIcon width={12} height={12} color={colors.text.tertiary} />
-              </View>
-            </View>
+          {/* 2. CENTER: Diperbarui */}
+          <View style={styles.colCenter}>
+            <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Diperbarui</Text>
             <Text style={[styles.dateText, { color: colors.text.primary }]}>
-              25 Okt 2025, 18:00
+              25 Okt, 18:00
             </Text>
+          </View>
+
+          {/* 3. END: Icon Panah */}
+          <View style={styles.colEnd}>
+             {/* Jika punya SVG KananIcon, pakai ini: */}
+             <KananIcon width={24} height={24} color={colors.text.tertiary} />
+             {/* Jika tidak, pakai Ionicons: */}
+             {/* <Ionicons name="chevron-forward" size={24} color={colors.text.tertiary} /> */}
           </View>
 
         </View>
@@ -150,7 +149,6 @@ export default function TicketListScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       
-      {/* HEADER */}
       <CustomHeader 
         type="page" 
         title="Lacak Status Tiket"
@@ -158,13 +156,12 @@ export default function TicketListScreen() {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* BODY CONTENT */}
       {isGuest ? (
-        // VIEW GUEST
+        // === GUEST VIEW ===
         <ScrollView contentContainerStyle={styles.content}>
           <View style={[styles.searchBox, { backgroundColor: colors.primary }]}>
             <Text style={styles.searchTitle}>Cari Tiket Anda</Text>
-            <Text style={styles.searchDesc}>Masukkan ID Tiket lengkap untuk melihat progres.</Text>
+            <Text style={styles.searchDesc}>Masukkan ID Tiket lengkap.</Text>
             <View style={styles.inputContainer}>
               <TextInput 
                 style={styles.input} 
@@ -185,6 +182,7 @@ export default function TicketListScreen() {
               <Text style={[styles.resultTitle, { color: colors.text.primary }]}>
                 Hasil Pencarian :
               </Text>
+              
               {guestSearchResult.length > 0 ? (
                 guestSearchResult.map(item => (
                   <View key={item.id} style={{ marginTop: 10 }}>
@@ -192,16 +190,19 @@ export default function TicketListScreen() {
                   </View>
                 ))
               ) : (
-                <View style={styles.emptyState}>
+                // EMPTY STATE CENTERED
+                <View style={styles.emptyStateContainer}>
                   <Text style={{ color: colors.text.secondary }}>Tiket tidak ditemukan.</Text>
                 </View>
               )}
             </View>
           )}
         </ScrollView>
+
       ) : (
-        // VIEW PEGAWAI
+        // === PEGAWAI VIEW ===
         <View style={styles.contentPegawai}>
+          {/* TAB BUTTONS (Gaya biasa, bukan card) */}
           <View style={[styles.tabContainer, { backgroundColor: colors.background.card }]}>
             <TouchableOpacity 
               style={[styles.tabBtn, activeTab === 'incident' && { borderBottomColor: colors.primary }]} 
@@ -223,7 +224,7 @@ export default function TicketListScreen() {
             renderItem={renderTicketCard}
             contentContainerStyle={{ padding: Spacing.lg, paddingBottom: hp(10) }}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
+              <View style={styles.emptyStateContainer}>
                 <Ionicons name="file-tray-outline" size={40} color={colors.text.tertiary} />
                 <Text style={{ color: colors.text.secondary, marginTop: 10 }}>Belum ada tiket.</Text>
               </View>
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.lg },
   contentPegawai: { flex: 1 },
 
-  // --- CARD STYLE ---
+  // --- CARD STYLING ---
   card: {
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
@@ -253,8 +254,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: Spacing.sm,
   },
-  
-  // NEW: Badge Style untuk Tipe (Kotak rounded dengan warna pudar)
   typeBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
@@ -266,7 +265,6 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.poppins.bold,
     fontSize: 10,
   },
-  
   ticketTitle: {
     fontFamily: FontFamily.poppins.semibold,
     fontSize: FontSize.md,
@@ -285,19 +283,26 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.sm,
   },
 
-  // NEW: Bottom Layout (3 Bagian)
+  // --- BOTTOM LAYOUT (3 KOLOM) ---
   cardBottom: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end', // Align bawah agar rapi
+    alignItems: 'flex-end', // Agar sejajar di bawah
   },
-  statusCol: {
-    flex: 2, // Kolom Kiri agak lebar
+  colStart: {
+    flex: 2, // Kiri Lebar
+    alignItems: 'flex-start',
   },
-  dateCol: {
-    flex: 2, // Kolom Kanan agak lebar
+  colCenter: {
+    flex: 2, // Tengah Lebar
+    alignItems: 'center', // Center Text
+  },
+  colEnd: {
+    flex: 1, // Kanan Sempit (Cuma icon)
     alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingBottom: 2, // Micro adjustment biar sejajar mata
   },
+  
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -307,21 +312,13 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.poppins.semibold,
     fontSize: FontSize.sm,
   },
-  updatedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  chevronBox: {
-    marginLeft: 4,
-    marginTop: 1,
-  },
   dateText: {
     fontFamily: FontFamily.poppins.medium,
-    fontSize: FontSize.xs,
+    fontSize: FontSize.xs, // Tanggal agak kecil
+    marginTop: 2,
   },
 
-  // --- SEARCH & TAB STYLES (Tetap sama seperti sebelumnya) ---
+  // --- GUEST SEARCH ---
   searchBox: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.xl,
@@ -366,7 +363,16 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     marginBottom: Spacing.sm,
   },
-  emptyState: { alignItems: 'center', marginTop: Spacing.xl },
+  
+  // --- EMPTY STATE CENTERED ---
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.xl * 2, // Turun agak jauh
+    width: '100%',
+  },
+
+  // --- PEGAWAI TAB ---
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
