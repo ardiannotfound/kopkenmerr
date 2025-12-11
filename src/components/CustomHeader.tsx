@@ -1,18 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { useTheme } from '../context/ThemeContext';
-import { CurrentUser } from '../data/Session'; // IMPORT Session untuk cek Role
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons'; // ✅ Fix import
 
-// Import Fonts
-import { useFonts, Inter_600SemiBold } from '@expo-google-fonts/inter';
-import { Poppins_600SemiBold } from '@expo-google-fonts/poppins';
+// --- IMPORTS DARI SYSTEM BARU ---
+import { useTheme } from '../hooks/useTheme';
+import { wp, hp, Spacing } from '../styles/spacing';
+import { FontSize } from '../styles/typography';
+import { useAuthStore } from '../store/authStore';
 
 interface CustomHeaderProps {
   type: 'home' | 'page';
@@ -33,27 +29,19 @@ export default function CustomHeader({
 }: CustomHeaderProps) {
   
   const navigation = useNavigation();
-  const { isDarkMode, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   
-  // Ambil Role User
-  const userRole = CurrentUser.role;
+  // 1. Ambil Theme & Auth dari Store Baru
+  const { isDark, toggleTheme, theme, colors } = useTheme();
+  const { isGuest } = useAuthStore();
 
-  let [fontsLoaded] = useFonts({
-    Inter_600SemiBold,
-    Poppins_600SemiBold,
-  });
-
-  // --- LOGIC NOTIFIKASI ---
-  // 1. Base Logic: Muncul jika 'home' ATAU dipaksa 'showNotificationButton'
-  // 2. Override Logic: Jika GUEST -> SELALU SEMBUNYIKAN
-  const shouldShowNotification = (type === 'home' || showNotificationButton) && userRole !== 'guest';
-
-  if (!fontsLoaded) return <View style={styles.placeholder} />;
+  // 2. Logic Notifikasi: Sembunyikan jika Guest
+  const shouldShowNotification = (type === 'home' || showNotificationButton) && !isGuest;
 
   return (
     <ImageBackground 
       source={require('../../assets/all-header.png')} 
-      style={styles.headerContainer} 
+      style={[styles.headerContainer, { paddingTop: insets.top + 10 }]} 
       resizeMode="cover"
     >
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -85,20 +73,20 @@ export default function CustomHeader({
             activeOpacity={0.7}
           >
             <Ionicons 
-              name={isDarkMode ? "sunny" : "moon"} 
-              size={RFValue(18)} 
+              name={isDark ? "sunny" : "moon"} 
+              size={18} 
               color="#FFFFFF" 
             />
           </TouchableOpacity>
 
-          {/* Notification Button (Dengan Logic Guest) */}
+          {/* Notification Button */}
           {shouldShowNotification && (
             <TouchableOpacity 
               onPress={onNotificationPress} 
               style={styles.circleButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="notifications-outline" size={RFValue(18)} color="#FFFFFF" />
+              <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
               <View style={styles.notifDot} />
             </TouchableOpacity>
           )}
@@ -113,7 +101,7 @@ export default function CustomHeader({
             style={styles.backButtonCircle}
             activeOpacity={0.7}
           >
-            <Ionicons name="chevron-back" size={RFValue(20)} color="#053F5C" />
+            <Ionicons name="chevron-back" size={20} color={colors.primary} />
           </TouchableOpacity>
 
           <Text style={styles.pageTitle} numberOfLines={1}>
@@ -121,7 +109,7 @@ export default function CustomHeader({
           </Text>
         </View>
       ) : (
-        <View style={{ height: hp('5%') }} /> 
+        <View style={{ height: hp(5) }} /> 
       )}
 
     </ImageBackground>
@@ -129,17 +117,11 @@ export default function CustomHeader({
 }
 
 const styles = StyleSheet.create({
-  placeholder: {
-    height: hp('22%'),
-    backgroundColor: '#053F5C',
-  },
-  
   headerContainer: {
-    width: wp('100%'),
-    height: hp('22%'), 
-    paddingTop: hp('4%'),
-    paddingHorizontal: wp('5%'),
-    paddingBottom: hp('2%'),
+    width: wp(100),
+    minHeight: hp(18), // Sedikit lebih pendek agar rapi
+    paddingHorizontal: wp(5),
+    paddingBottom: hp(2),
     justifyContent: 'space-between', 
     flexDirection: 'column',
   },
@@ -157,34 +139,35 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   
+  // GUNAKAN FONT FAMILY STRING LANGSUNG (Pastikan nama ini sama dengan di useCachedResources)
   greetingText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: RFValue(12),
+    fontFamily: 'Poppins-Medium', // Ganti Inter ke Poppins biar konsisten
+    fontSize: 12,
     color: '#E0E0E0', 
   },
   userNameText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(18),
+    fontFamily: 'Poppins-Bold',
+    fontSize: 18,
     color: '#FFFFFF',
     marginTop: -2,
   },
   userUnitText: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: RFValue(11), 
+    fontFamily: 'Poppins-Regular',
+    fontSize: 11, 
     color: '#81C3D7', 
     marginTop: -2,
   },
 
   topRightContainer: {
     flexDirection: 'row',
-    gap: wp('3%'),
+    gap: 10,
     marginTop: 5, 
   },
 
   circleButton: {
-    width: wp('9%'),  
-    height: wp('9%'), 
-    borderRadius: wp('4.5%'), 
+    width: 36,  
+    height: 36, 
+    borderRadius: 18, 
     backgroundColor: 'rgba(217, 217, 217, 0.39)', 
     justifyContent: 'center',
     alignItems: 'center',
@@ -204,22 +187,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    paddingBottom: hp('1%'), 
+    marginTop: 15,
   },
 
   backButtonCircle: {
-    width: wp('9%'),
-    height: wp('9%'),
-    borderRadius: wp('4.5%'),
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.9)', 
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: wp('3%'), 
+    marginRight: 12, 
   },
 
   pageTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(22), 
+    fontFamily: 'Poppins-Bold',
+    fontSize: 20, 
     color: '#FFFFFF', 
     flex: 1, 
   },

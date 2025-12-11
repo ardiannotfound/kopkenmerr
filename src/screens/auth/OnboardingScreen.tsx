@@ -1,23 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { 
   View, 
-  Text, 
   StyleSheet, 
   FlatList, 
   Image, 
   Dimensions, 
   TouchableOpacity, 
-  StatusBar 
+  Text
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp,
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
 
-// Pastikan Font sudah diload di App.tsx (useCachedResources), jadi disini tidak perlu useFonts lagi.
+// --- IMPORTS DARI SYSTEM BARU ---
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing} from '../../styles/spacing';
+import { FontSize } from '../../styles/typography';
+import { FontFamily } from '../../styles/typography';
 
 const { width } = Dimensions.get('window');
 
@@ -46,10 +44,11 @@ export default function OnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // 1. Hook Theme Baru
+  const { colors, theme } = useTheme();
 
-  // --- LOGIC UPDATE INDEX (ANTI-LAG) ---
   const handleScroll = (event: any) => {
-    // Hitung index berdasarkan offset X dibagi lebar layar
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
     setCurrentIndex(slideIndex);
   };
@@ -63,14 +62,13 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleSkip = () => navigation.replace('RoleSelection');
+  // Navigasi ke RoleSelection (Sesuai flow baru)
   const handleFinish = () => navigation.replace('RoleSelection');
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      {/* SLIDER */}
+    // 2. Ganti ScreenWrapper dengan View biasa + Background Theme
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      
       <View style={{ flex: 1 }}>
         <FlatList
           ref={flatListRef}
@@ -80,16 +78,22 @@ export default function OnboardingScreen() {
           showsHorizontalScrollIndicator={false}
           bounces={false}
           keyExtractor={(item) => item.id}
-          // GANTI viewabilityConfig DENGAN INI:
           onMomentumScrollEnd={handleScroll} 
           renderItem={({ item }) => (
             <View style={styles.slide}>
               <View style={styles.imageContainer}>
                 <Image source={item.image} style={styles.image} />
               </View>
+              
               <View style={styles.textContainer}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.subtitle}>{item.subtitle}</Text>
+                {/* 3. Text dengan Typography Baru */}
+                <Text style={[styles.title, { color: colors.text.primary }]}>
+                  {item.title}
+                </Text>
+                
+                <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+                  {item.subtitle}
+                </Text>
               </View>
             </View>
           )}
@@ -102,7 +106,11 @@ export default function OnboardingScreen() {
               key={index}
               style={[
                 styles.dot,
-                currentIndex === index ? styles.dotActive : styles.dotInactive,
+                { 
+                  // Logic Warna Dot: Active = Accent/Primary, Inactive = Border
+                  backgroundColor: currentIndex === index ? colors.accent : colors.border.default,
+                  width: currentIndex === index ? wp(5.2) : wp(1.8) 
+                }
               ]}
             />
           ))}
@@ -113,21 +121,28 @@ export default function OnboardingScreen() {
       <View style={styles.footer}>
         {currentIndex === SLIDES.length - 1 ? (
           <View style={styles.finishButtonContainer}>
-            <TouchableOpacity style={styles.finishButton} onPress={handleFinish}>
-              <Text style={styles.finishText}>Lanjutkan</Text>
+            <TouchableOpacity 
+              style={[styles.finishButton, { backgroundColor: colors.primary }]} 
+              onPress={handleFinish}
+            >
+              <Text style={[styles.buttonText, { color: colors.white }]}>Lanjutkan</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.navigationButtons}>
-            <TouchableOpacity onPress={handleSkip} style={styles.touchArea}>
-              <Text style={styles.navText}>Skip</Text>
+            {/* Tombol Skip */}
+            <TouchableOpacity onPress={handleFinish} style={styles.touchArea}>
+              <Text style={[styles.bodyText, { color: colors.text.secondary }]}>Skip</Text>
             </TouchableOpacity>
+            
+            {/* Tombol Next */}
             <TouchableOpacity onPress={handleNext} style={styles.touchArea}>
-              <Text style={styles.navText}>Next</Text>
+              <Text style={[styles.buttonText, { color: colors.primary }]}>Next</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
+
     </View>
   );
 }
@@ -135,80 +150,76 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
-
+  
   slide: {
-    width: width, // Lebar layar penuh (Dimensions)
+    width: width, 
     alignItems: 'center',
   },
 
   imageContainer: {
-    height: hp('50%'), 
-    width: wp('100%'),
+    height: hp(50), 
+    width: wp(100),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: hp('4%'),
+    paddingTop: hp(2), 
   },
 
   image: {
-    width: wp('75%'),
-    height: hp('35%'),
+    width: wp(80), 
+    height: hp(40),
     resizeMode: 'contain',
   },
 
   textContainer: {
-    width: wp('100%'),
-    paddingHorizontal: wp('8%'), 
+    width: wp(100),
+    paddingHorizontal: wp(8), 
     alignItems: 'center',
-    marginTop: hp('1%'),
-    justifyContent: 'flex-start',
-    paddingBottom: hp('5%'), 
+    marginTop: hp(2),
   },
 
+  // Font Styles (Manual dari Typography constants)
   title: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(22), 
-    color: '#263238',
+    fontSize: FontSize['2xl'],
+    fontFamily: FontFamily.poppins.bold,
+    marginBottom: 10,
     textAlign: 'center',
-    marginBottom: hp('1.5%'), 
+  },
+  
+  subtitle: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.poppins.regular,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 
-  subtitle: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: RFValue(13),
-    color: '#555657',
-    textAlign: 'center',
-    lineHeight: RFValue(20), 
+  bodyText: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.poppins.regular,
+  },
+
+  buttonText: {
+    fontSize: FontSize.md,
+    fontFamily: FontFamily.poppins.semibold,
   },
 
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     position: 'absolute',
-    bottom: hp('14%'), 
+    bottom: hp(15), 
     width: '100%',
   },
 
   dot: {
-    height: hp('0.9%'),
+    height: hp(0.9),
     borderRadius: 50,
-    marginHorizontal: wp('1%'),
-  },
-
-  dotActive: {
-    width: wp('5.2%'),
-    backgroundColor: '#FFA629',
-  },
-
-  dotInactive: {
-    width: wp('1.8%'),
-    backgroundColor: '#D9D9D9',
+    marginHorizontal: wp(1),
   },
 
   footer: {
-    height: hp('12%'),
-    paddingHorizontal: wp('7%'),
+    height: hp(10),
+    paddingHorizontal: wp(7),
     justifyContent: 'center',
   },
 
@@ -222,29 +233,16 @@ const styles = StyleSheet.create({
     padding: 10,
   },
 
-  navText: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: RFValue(14),
-    color: '#555657',
-  },
-
   finishButtonContainer: {
     alignItems: 'flex-end',
     width: '100%',
   },
 
   finishButton: {
-    backgroundColor: '#053F5C',
-    paddingVertical: hp('1.4%'),
-    paddingHorizontal: wp('7%'),
-    borderRadius: 21,
+    paddingVertical: hp(1.4),
+    paddingHorizontal: wp(8),
+    borderRadius: 50, 
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  finishText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: RFValue(14),
-    color: '#FFFFFF',
   },
 });

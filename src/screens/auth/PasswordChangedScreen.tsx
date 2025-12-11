@@ -8,22 +8,20 @@ import {
   StatusBar 
 } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
 
-// CLEAN CODE: Hapus import useFonts
+// --- IMPORTS SYSTEM BARU ---
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing, BorderRadius, ButtonHeight } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
 
 export default function PasswordChangedScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-
-  // CLEAN CODE: Hapus logic load fonts lokal
+  const navigation = useNavigation<any>();
+  
+  // 1. Ambil Theme
+  const { colors, isDark } = useTheme();
 
   const handleFinish = () => {
-    // Reset navigasi agar user tidak bisa tekan 'Back' ke form ganti password
+    // Reset navigasi agar user tidak bisa tekan 'Back' ke form
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
@@ -33,8 +31,11 @@ export default function PasswordChangedScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <StatusBar 
+        barStyle={isDark ? "light-content" : "dark-content"} 
+        backgroundColor={colors.background.primary} 
+      />
 
       {/* 1. AREA GAMBAR (50% Layar) */}
       <View style={styles.imageContainer}>
@@ -49,21 +50,25 @@ export default function PasswordChangedScreen() {
         
         {/* Teks Informasi */}
         <View style={styles.textWrapper}>
-          <Text style={styles.title}>Kata Sandi Berhasil Diubah</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.text.primary }]}>
+            Kata Sandi Berhasil Diubah
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
             Kata sandi Anda telah berhasil diperbarui. 
-            Silakan masuk kembali menggunakan kredensial baru Anda untuk melanjutkan akses ke aplikasi.
+            Silakan masuk kembali menggunakan kredensial baru Anda.
           </Text>
         </View>
 
         {/* Tombol Aksi */}
         <View style={styles.buttonWrapper}>
           <TouchableOpacity 
-            style={styles.btnPrimary} 
+            style={[styles.btnPrimary, { backgroundColor: colors.primary }]} 
             onPress={handleFinish}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnText}>LOGIN SEKARANG</Text>
+            <Text style={[styles.btnText, { color: colors.white }]}>
+              LOGIN SEKARANG
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -75,48 +80,45 @@ export default function PasswordChangedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   
   // --- IMAGE SECTION ---
   imageContainer: {
-    height: hp('50%'),
-    width: wp('100%'),
+    height: hp(50),
+    width: wp(100),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: hp('5%'),
+    paddingTop: hp(5),
   },
   image: {
-    width: wp('80%'),
-    height: hp('40%'), // Gambar proporsional
+    width: wp(80),
+    height: hp(40), 
     resizeMode: 'contain',
   },
 
   // --- CONTENT SECTION ---
   contentContainer: {
     flex: 1,
-    paddingHorizontal: wp('7%'),
+    paddingHorizontal: wp(7),
     justifyContent: 'flex-start',
   },
 
   // Typography
   textWrapper: {
     alignItems: 'center',
-    marginBottom: hp('5%'),
+    marginBottom: hp(5),
   },
   title: {
-    fontFamily: 'Poppins_600SemiBold', // Font String Langsung
-    fontSize: RFValue(22),
-    color: '#263238', 
-    marginBottom: hp('1.5%'),
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize['2xl'],
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
-    fontFamily: 'Poppins_500Medium', 
-    fontSize: RFValue(13), 
-    color: '#555657', 
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: FontSize.sm, 
     textAlign: 'center',
-    lineHeight: RFValue(20), 
+    lineHeight: 22, 
   },
 
   // Button
@@ -125,23 +127,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   btnPrimary: {
-    backgroundColor: '#053F5C', 
-    borderRadius: 21, 
-    paddingVertical: hp('1.5%'),
-    paddingHorizontal: wp('10%'),
+    borderRadius: BorderRadius['2xl'], 
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(10),
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%', 
+    height: ButtonHeight.lg,
     elevation: 3, 
-    shadowColor: '#053F5C', 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
   btnText: {
-    fontFamily: 'Poppins_500Medium', 
-    fontSize: RFValue(16),
-    color: '#FFFFFF',
+    fontFamily: FontFamily.poppins.semibold, 
+    fontSize: FontSize.md,
     letterSpacing: 0.5, 
   },
 });

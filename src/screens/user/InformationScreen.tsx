@@ -14,7 +14,7 @@ import { RFValue } from 'react-native-responsive-fontsize';
 // CLEAN CODE: Hapus import useFonts karena sudah diload global
 // Hapus import font files juga
 
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext_OLD';
 import CustomHeader from '../../components/CustomHeader';
 import { MOCK_ARTICLES } from '../../data/mockData';
 

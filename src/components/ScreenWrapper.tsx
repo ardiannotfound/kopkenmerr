@@ -1,40 +1,52 @@
+// src/components/ScreenWrapper.tsx
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, ViewStyle, StyleSheet, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext_OLD';
 
 interface ScreenWrapperProps {
   children: React.ReactNode;
   style?: ViewStyle;
-  ignoreBottomSafeArea?: boolean; // Set true untuk ignore bottom safe area
+  backgroundColor?: string;
+  translucentStatusBar?: boolean;
 }
 
-export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({ 
+export default function ScreenWrapper({ 
   children, 
-  style,
-  ignoreBottomSafeArea = false 
-}) => {
+  style, 
+  backgroundColor,
+  translucentStatusBar = false 
+}: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isDarkMode } = useTheme();
+
+  const bg = backgroundColor || colors.background;
 
   return (
-    <View 
-      style={[
-        styles.container, 
-        {
-          paddingTop: insets.top,
-          paddingBottom: ignoreBottomSafeArea ? 0 : insets.bottom,
-          paddingLeft: insets.left,
-          paddingRight: insets.right,
-        },
-        style
-      ]}
-    >
-      {children}
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: bg, 
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom 
+      }
+    ]}>
+      <StatusBar 
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+        backgroundColor={translucentStatusBar ? 'transparent' : bg}
+        translucent={translucentStatusBar}
+      />
+      
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={[{ flex: 1 }, style]}
+      >
+        {children}
+      </KeyboardAvoidingView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
 });

@@ -7,32 +7,37 @@ import {
   Image, 
   StatusBar 
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
-// CLEAN CODE: Tidak perlu import useFonts lagi
+// --- IMPORTS SYSTEM BARU ---
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing, BorderRadius, ButtonHeight } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
 
 export default function EmailSentScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  
+  // 1. Ambil Data Email dari Screen Sebelumnya
+  const userEmail = route.params?.email || 'email Anda';
 
-  // CLEAN CODE: Hapus useFonts dan pengecekan if (!fontsLoaded)
-  // Font sudah dijamin siap oleh App.tsx
+  // 2. Ambil Theme
+  const { colors, isDark } = useTheme();
 
-  // Tombol Tutup -> Kembali ke Login
   const handleClose = () => {
+    // Kembali ke Login (PopToTop agar stack bersih)
     navigation.navigate('Login');
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      {/* StatusBar menyesuaikan tema */}
+      <StatusBar 
+        barStyle={isDark ? "light-content" : "dark-content"} 
+        backgroundColor={colors.background.primary} 
+      />
 
-      {/* 1. AREA GAMBAR (50% Layar) */}
+      {/* 1. AREA GAMBAR */}
       <View style={styles.imageContainer}>
         <Image 
           source={require('../../../assets/email-sent.png')} 
@@ -40,35 +45,47 @@ export default function EmailSentScreen() {
         />
       </View>
 
-      {/* 2. AREA KONTEN (Teks & Tombol) */}
+      {/* 2. AREA KONTEN */}
       <View style={styles.contentContainer}>
         
         {/* Title & Subtitle */}
         <View style={styles.textWrapper}>
-          <Text style={styles.title}>Email Reset Terkirim</Text>
-          <Text style={styles.subtitle}>
-            Kami telah mengirimkan link untuk mengatur ulang kata sandi ke email Anda. 
-            Silakan periksa inbox atau folder spam.
+          <Text style={[styles.title, { color: colors.text.primary }]}>
+            Email Reset Terkirim
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+            Kami telah mengirimkan instruksi reset password ke:
+          </Text>
+          {/* Tampilkan Email User agar lebih informatif */}
+          <Text style={[styles.emailText, { color: colors.primary }]}>
+            {userEmail}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.text.secondary, marginTop: 5 }]}>
+            Silakan periksa inbox atau folder spam Anda.
           </Text>
         </View>
 
         {/* Tombol Tutup */}
         <View style={styles.buttonWrapper}>
           <TouchableOpacity 
-            style={styles.btnPrimary} 
+            style={[styles.btnPrimary, { backgroundColor: colors.primary }]} 
             onPress={handleClose}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnText}>Tutup</Text>
+            <Text style={[styles.btnText, { color: colors.white }]}>
+              Kembali ke Login
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Tombol Simulasi (Hanya untuk Dev, nanti dihapus saat production) */}
+        {/* Tombol Simulasi (Hapus nanti saat production) */}
         <TouchableOpacity 
           style={{ marginTop: 20, alignSelf: 'center' }} 
           onPress={() => navigation.navigate('ResetPassword')}
         >
-          <Text style={{ color: '#ccc', fontSize: 12 }}>[DEV: Buka Link Reset]</Text>
+          <Text style={{ color: colors.text.tertiary, fontSize: 12 }}>
+            [DEV: Buka Link Reset]
+          </Text>
         </TouchableOpacity>
 
       </View>
@@ -79,48 +96,51 @@ export default function EmailSentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   
   // --- IMAGE SECTION ---
   imageContainer: {
-    height: hp('50%'),
-    width: wp('100%'),
+    height: hp(50),
+    width: wp(100),
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: hp('5%'),
+    paddingTop: hp(5),
   },
   image: {
-    width: wp('80%'),
-    height: hp('40%'),
+    width: wp(80),
+    height: hp(40),
     resizeMode: 'contain',
   },
 
   // --- CONTENT SECTION ---
   contentContainer: {
     flex: 1,
-    paddingHorizontal: wp('7%'),
+    paddingHorizontal: wp(7),
     justifyContent: 'flex-start',
   },
 
   // Teks
   textWrapper: {
     alignItems: 'center',
-    marginBottom: hp('5%'),
+    marginBottom: hp(5),
   },
   title: {
-    fontFamily: 'Poppins_600SemiBold', // Font String Langsung
-    fontSize: RFValue(24), 
-    color: '#263238', 
-    marginBottom: hp('1.5%'),
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize['2xl'], 
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
-    fontFamily: 'Poppins_500Medium', 
-    fontSize: RFValue(14), 
-    color: '#555657', 
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: FontSize.base, 
     textAlign: 'center',
-    lineHeight: RFValue(22), 
+    lineHeight: 24, 
+  },
+  emailText: {
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize.md,
+    textAlign: 'center',
+    marginTop: 5,
   },
 
   // Tombol
@@ -130,22 +150,21 @@ const styles = StyleSheet.create({
   },
   
   btnPrimary: {
-    backgroundColor: '#053F5C', 
-    borderRadius: 21, 
-    paddingVertical: hp('1.5%'),
-    paddingHorizontal: wp('10%'), 
+    borderRadius: BorderRadius['2xl'], 
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(10), 
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%', 
+    height: ButtonHeight.lg,
     elevation: 2, 
-    shadowColor: '#053F5C', 
+    shadowColor: '#000', 
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
   btnText: {
-    fontFamily: 'Poppins_500Medium', 
-    fontSize: RFValue(16),
-    color: '#FFFFFF',
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: FontSize.md,
   },
 });

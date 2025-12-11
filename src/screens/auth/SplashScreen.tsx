@@ -1,202 +1,143 @@
-import React, { useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Dimensions, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { StatusBar } from 'expo-status-bar';
-import * as SplashScreenUtil from 'expo-splash-screen'; 
-
-// IMPORT LIBRARY RESPONSIVE
-import {
-  widthPercentageToDP as wp,
-  heightPercentageToDP as hp,
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
-
-// IMPORT ANIMASI
+import React, { useEffect } from 'react';
+import { StyleSheet, Image, View, Text } from 'react-native';
 import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-  withDelay,
-  Easing,
-  runOnJS
+  FadeInLeft,
+  FadeInRight 
 } from 'react-native-reanimated';
 
-const { width } = Dimensions.get('window');
+// --- IMPORTS DESIGN SYSTEM ---
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing } from '../../styles/spacing';
+import { FontFamily } from '../../styles/typography';
 
-export default function SplashScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+// ✅ Tambahkan Interface Props
+interface SplashScreenProps {
+  onFinish: () => void;
+}
 
-  // ANIMASI VALUES
-  const logoTranslateX = useSharedValue(0); 
-  const textOpacity = useSharedValue(0);
-  const textTranslateX = useSharedValue(20);
+// ✅ Terima props onFinish
+export default function SplashScreen({ onFinish }: SplashScreenProps) {
+  const { colors } = useTheme();
+  
+  // ❌ HAPUS: const navigation = useNavigation<any>();
+  // Kita tidak butuh navigation di sini
 
-  // STYLE ANIMASI
-  const animatedLogoStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: logoTranslateX.value }],
+  const BG_COLOR = colors.primary; 
+  const TEXT_COLOR = '#FFFFFF'; 
+
+  useEffect(() => {
+    const prepareApp = async () => {
+      // Tunggu 3 detik, lalu panggil onFinish
+      setTimeout(() => {
+        onFinish(); // ✅ Kabari RootNavigator bahwa animasi selesai
+      }, 3000);
     };
-  });
 
-  const animatedTextStyle = useAnimatedStyle(() => {
-    return {
-      opacity: textOpacity.value,
-      transform: [{ translateX: textTranslateX.value }] 
-    };
-  });
-
-  // Logic Pindah Halaman
-  const navigateNext = () => {
-    navigation.replace('Onboarding');
-  };
-
-  // Gunakan useCallback agar fungsi tidak direcreate
-  const onLayoutRootView = useCallback(async () => {
-    await SplashScreenUtil.hideAsync();
-
-    // 1. Geser Logo (Target: -23% Lebar Layar)
-    // Angka 0.23 ini pas agar logo bergeser ke kiri tapi tidak mepet pinggir
-    logoTranslateX.value = withTiming(-width * 0.30, {
-      duration: 1800, 
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1), 
-    });
-
-    // 2. Munculkan Teks
-    textOpacity.value = withDelay(600, withTiming(1, { 
-      duration: 1500,
-      easing: Easing.out(Easing.quad)
-    }));
-
-    textTranslateX.value = withDelay(600, withTiming(0, { 
-      duration: 1500,
-      easing: Easing.out(Easing.quad)
-    }, (finished) => {
-      if (finished) {
-        runOnJS(navigateNext)();
-      }
-    }));
-  }, []);
+    prepareApp();
+  }, []); // Hapus dependency navigation
 
   return (
-    <View style={styles.container} onLayout={onLayoutRootView}>
-      <StatusBar style="light" />
-      
-      <View style={styles.contentContainer}>
+    <View style={[styles.container, { backgroundColor: BG_COLOR }]}>
+      <View style={styles.contentWrapper}>
         
-        {/* LOGO */}
-        <View style={styles.logoContainer}>
-          <Animated.View style={animatedLogoStyle}>
-            <Image 
-              source={require('../../../assets/siladan.png')}
-              style={styles.logoImage}
-            />
-          </Animated.View>
-        </View>
+        {/* LOGO ANIMATION */}
+        <Animated.View
+          entering={FadeInLeft
+            .duration(1400)
+            .springify()
+            .damping(15)
+            .stiffness(60)
+          }
+        >
+          <Image 
+            // Pastikan path ini benar (gunakan ../../../ jika perlu)
+            source={require('../../../assets/siladan.png')} 
+            style={styles.logoImage} 
+            resizeMode="contain" 
+          />
+        </Animated.View>
 
-        {/* TEXT CONTAINER */}
-        <View style={styles.textContainerWrapper}>
-          <Animated.View style={[styles.textContainer, animatedTextStyle]}>
-            <Text 
-              style={styles.title} 
-              numberOfLines={1} 
-              adjustsFontSizeToFit
-            >
-              SILADAN
-            </Text>
-            
-            <Text 
-              style={styles.subtitle} 
-              numberOfLines={1} 
-              adjustsFontSizeToFit
-              minimumFontScale={0.4} 
-            >
-              Sistem Informasi Layanan dan Aduan
-            </Text>
-          </Animated.View>
-        </View>
+        {/* TEXT ANIMATION */}
+        <Animated.View
+          entering={FadeInRight
+            .delay(300)
+            .duration(1400)
+            .springify()
+            .damping(15)
+            .stiffness(60)
+          }
+          style={styles.textContainer}
+        >
+          <Text 
+            style={[styles.title, { color: TEXT_COLOR }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            SILADAN
+          </Text>
 
+          <Text 
+            style={[styles.subtitle, { color: TEXT_COLOR }]}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+          >
+            Sistem Informasi Layanan dan Aduan
+          </Text>
+        </Animated.View>
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>© Pemerintah Kota</Text>
+        <Text style={[styles.footerText, { color: 'rgba(255,255,255,0.5)' }]}>
+          © 2025 Pemerintah Kota
+        </Text>
       </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#053F5C', 
     justifyContent: 'center',
     alignItems: 'center',
   },
-  contentContainer: {
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    width: wp('100%'), 
-    height: hp('25%'), 
-    position: 'relative', 
-  },
-  
-  // LOGO: Mulai di tengah absolut
-  logoContainer: {
-    position: 'absolute',
-    left: '50%',
-    marginLeft: -wp('15%'), // Setengah dari lebar logo (30% / 2)
+  contentWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: Spacing.lg, 
+    width: wp(90), 
   },
-
   logoImage: {
-    width: wp('30%'), 
-    height: wp('30%'), 
-    resizeMode: 'contain',
+    width: wp(28), 
+    height: wp(28), 
+    marginRight: Spacing.sm, 
   },
-
-  // TEKS: Diatur agar menempel pas di kanan logo setelah logo bergeser
-  textContainerWrapper: {
-    position: 'absolute',
-    left: '50%', 
-    // PERBAIKAN UTAMA DISINI:
-    // marginLeft -5% membuat teks mulai sedikit di kiri titik tengah.
-    // Saat logo geser ke kiri (-23%), dan teks di posisi ini (-5%),
-    // celah di antaranya akan pas dan terlihat center secara optik.
-    marginLeft: -wp('15%'), 
-    width: wp('65%'), 
-  },
-
   textContainer: {
+    flex: 1, 
     justifyContent: 'center',
+    marginLeft: 5,
   },
-
   title: {
-    fontFamily: 'KonkhmerSleokchher_400Regular', 
-    fontSize: RFValue(40), 
-    color: '#FFFFFF',
-    lineHeight: RFValue(50), 
-    marginBottom: -hp('1.5%'), 
-    textAlign: 'left',
-    letterSpacing: -2.5,
+    fontFamily: FontFamily.khmer, 
+    fontSize: wp(11), 
+    lineHeight: wp(13),
+    marginBottom: -5, 
+    includeFontPadding: false,
   },
-  
   subtitle: {
-    fontFamily: 'KonkhmerSleokchher_400Regular', 
-    fontSize: RFValue(11), 
-    color: '#FFFFFF',
+    fontFamily: FontFamily.khmer, 
+    fontSize: wp(3), 
+    lineHeight: wp(4),
+    marginTop: 0,
     opacity: 0.9,
-    letterSpacing: -1, 
-    textAlign: 'left',
   },
-
   footer: {
     position: 'absolute',
-    bottom: hp('5%'), 
+    bottom: hp(5),
   },
   footerText: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: RFValue(10), 
-  },
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: 10,
+  }
 });

@@ -6,39 +6,82 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   Alert, 
-  ScrollView 
+  ScrollView, 
+  ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
 
+// --- IMPORTS DESIGN SYSTEM ---
 import AuthHeader from '../../components/AuthHeader';
-import { MOCK_USERS } from '../../data/mockData';
-import { setCurrentUser } from '../../data/Session';
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing, BorderRadius, InputHeight, ButtonHeight } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- IMPORTS LOGIC ---
+import { authApi } from '../../services/api/auth';
+import { useAuthStore } from '../../store/authStore';
+
+// --- IMPORTS SVG ICONS ---
+import ProfileIcon from '../../../assets/icons/profile.svg';
+import EyeOpenIcon from '../../../assets/icons/matabuka.svg';   
+import EyeClosedIcon from '../../../assets/icons/matatutup.svg'; 
 
 export default function LoginScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const navigation = useNavigation<any>();
+  const { colors, theme } = useTheme();
   
+  // Ambil action login dari store
+  const { login } = useAuthStore(); 
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    const user = MOCK_USERS.find(u => u.username === username);
-    if (user) {
-      setCurrentUser(user.role, user.id); 
-      if (user.role === 'employee') {
-        navigation.replace('UserApp', { screen: 'Beranda', params: { userRole: 'employee', userId: user.id } });
-      } else if (user.role === 'technician') {
-        navigation.replace('TechnicianApp', { screen: 'Beranda', params: { userRole: 'technician', userId: user.id } });
+  const handleLogin = async () => {
+    // 1. Validasi Input Kosong
+    if (!username || !password) {
+      Alert.alert('Gagal', 'Mohon isi username dan password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 2. Tembak API Login
+      const response = await authApi.login({ username, password });
+      
+      // ============================================================
+      // 🔒 SECURITY GATE: CEK ROLE SEBELUM MENYIMPAN SESI
+      // ============================================================
+      
+      // Daftar role yang DIPERBOLEHKAN masuk ke Mobile App
+      const ALLOWED_ROLES = ['teknisi', 'pegawai_opd', 'masyarakat']; 
+      
+      // Ambil role ID dari response (antisipasi jika object atau string)
+      // Pastikan backend mengembalikan structure user.role.id atau user.role
+      const userRoleId = typeof response.user.role === 'object' 
+        ? response.user.role.id 
+        : response.user.role; 
+
+      if (!ALLOWED_ROLES.includes(userRoleId)) {
+        Alert.alert(
+          'Akses Ditolak', 
+          'Aplikasi Mobile hanya untuk Pegawai OPD dan Teknisi. Admin/Kabid silakan gunakan Web Dashboard.'
+        );
+        setLoading(false);
+        return; // BERHENTI DI SINI
       }
-    } else {
-      Alert.alert('Gagal Masuk', 'Username tidak ditemukan.');
+      // ============================================================
+
+      // 3. Simpan ke Store (Otomatis navigasi karena RootNavigator mendeteksi perubahan auth)
+      login(response.token, response.user);
+      
+    } catch (error: any) {
+      console.error(error);
+      const message = error.response?.data?.message || 'Gagal terhubung ke server atau username/password salah.';
+      Alert.alert('Login Gagal', message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,52 +94,79 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
       
       {/* HEADER */}
       <AuthHeader />
 
       {/* FORM CONTAINER */}
-      <View style={[styles.formContainer, { zIndex: 999 }]}>
+      <View style={[styles.formContainer, { backgroundColor: colors.background.primary }]}>
         <ScrollView 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 1 }} 
         >
           
           <View style={styles.formHeaderTextContainer}>
-            <Text style={styles.titleLogin}>Login</Text>
-            <Text style={styles.subtitleLogin}>Silahkan login untuk melanjutkan</Text>
+            {/* FIXED: Gunakan colors.text.primary agar berubah Putih saat Dark Mode */}
+            <Text style={[styles.titleLogin, { color: colors.text.primary }]}>
+              Login
+            </Text>
+            {/* FIXED: Subtitle menggunakan secondary text color */}
+            <Text style={[styles.subtitleLogin, { color: colors.text.secondary }]}>
+              Silahkan login untuk melanjutkan
+            </Text>
           </View>
 
           {/* INPUT USERNAME */}
-          <Text style={styles.label}>Email / Username</Text>
-          <View style={styles.inputBox}>
+          {/* FIXED: Label input menyesuaikan tema */}
+          <Text style={[styles.label, { color: colors.text.primary }]}>
+            Email / Username
+          </Text>
+          <View style={[
+            styles.inputBox, 
+            { 
+              borderColor: colors.border.default,
+              backgroundColor: colors.background.card // Input background juga dinamis
+            }
+          ]}>
             <TextInput
-              style={styles.input}
-              placeholder="Masukkan Email Anda"
-              placeholderTextColor="#ADB5BD"
+              style={[styles.input, { color: colors.text.primary }]}
+              placeholder="Masukkan Email/Username"
+              placeholderTextColor={colors.text.secondary} // Placeholder jangan terlalu gelap di dark mode
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
             />
             <View style={styles.iconWrapper}>
-              <Ionicons name="person-outline" size={22} color="#555657" />
+              <ProfileIcon width={22} height={22} color={colors.text.secondary} />
             </View>
           </View>
 
           {/* INPUT PASSWORD */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.inputBox}>
+          <Text style={[styles.label, { color: colors.text.primary }]}>
+            Password
+          </Text>
+          <View style={[
+            styles.inputBox, 
+            { 
+              borderColor: colors.border.default,
+              backgroundColor: colors.background.card 
+            }
+          ]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: colors.text.primary }]}
               placeholder="Masukkan Password"
-              placeholderTextColor="#ADB5BD"
+              placeholderTextColor={colors.text.secondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={secureText}
             />
             <TouchableOpacity onPress={() => setSecureText(!secureText)} style={styles.iconWrapper}>
-              <Ionicons name={secureText ? "eye-off-outline" : "eye-outline"} size={22} color="#555657" />
+              {secureText ? (
+                 <EyeClosedIcon width={22} height={22} color={colors.text.secondary} />
+              ) : (
+                 <EyeOpenIcon width={22} height={22} color={colors.text.secondary} />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -105,21 +175,28 @@ export default function LoginScreen() {
             style={styles.forgotPassContainer}
             onPress={handleForgotPassword}
           >
-            <Text style={styles.forgotPassText}>Lupa Password?</Text>
+            <Text style={[styles.forgotPassText, { color: colors.link }]}>Lupa Password?</Text>
           </TouchableOpacity>
 
           {/* TOMBOL LOGIN */}
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>LOGIN</Text>
+          <TouchableOpacity 
+            style={[styles.loginButton, { backgroundColor: colors.primary }]} 
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={[styles.loginButtonText, { color: colors.white }]}>LOGIN</Text>
+            )}
           </TouchableOpacity>
 
           {/* TOMBOL KEMBALI */}
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={styles.backButtonText}>Kembali</Text>
+            <Text style={[styles.backButtonText, { color: colors.text.secondary }]}>Kembali</Text>
           </TouchableOpacity>
 
-          {/* Spacer */}
-          <View style={{ height: hp('3%') }} />
+          <View style={{ height: hp(3) }} />
 
         </ScrollView>
       </View>
@@ -130,59 +207,53 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#053F5C', 
   },
   
   formContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: wp('8%'),
-    paddingTop: hp('4%'),
-    marginTop: -hp('4%'), 
+    borderTopLeftRadius: BorderRadius['2xl'],
+    borderTopRightRadius: BorderRadius['2xl'],
+    paddingHorizontal: wp(8),
+    paddingTop: hp(4),
+    marginTop: -hp(4),
+    zIndex: 999
   },
   
   formHeaderTextContainer: {
     alignItems: 'center',
-    marginBottom: hp('4%'),
+    marginBottom: hp(4),
   },
   titleLogin: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: RFValue(28),
-    color: '#053F5C',
-    marginBottom: hp('0.5%'),
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize['3xl'],
+    marginBottom: Spacing.xs,
   },
   subtitleLogin: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(12),
-    color: '#053F5C',
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.sm,
   },
+  
   label: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: RFValue(14),
-    color: '#053F5C',
-    marginBottom: hp('1%'),
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.base,
+    marginBottom: Spacing.sm,
     textAlign: 'left',
   },
+  
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 9,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: '#E5E2E2',
-    paddingLeft: 15, 
-    paddingRight: 0,
-    height: hp('6.5%'), 
-    marginBottom: hp('2.5%'),
+    paddingLeft: Spacing.md, 
+    height: InputHeight.lg, 
+    marginBottom: Spacing.lg,
     overflow: 'hidden',
   },
   input: {
     flex: 1, 
-    fontFamily: 'Poppins_400Regular',
-    fontSize: RFValue(14),
-    color: '#333',
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.base,
     height: '100%', 
   },
   iconWrapper: {
@@ -190,46 +261,43 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 5
   },
+  
   forgotPassContainer: {
     alignItems: 'flex-end',
-    marginBottom: hp('2%'),
+    marginBottom: hp(2),
   },
   forgotPassText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: RFValue(12),
-    color: '#429EBD',
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.sm,
   },
   
   loginButton: {
-    backgroundColor: '#053F5C',
-    borderRadius: 20,
-    height: hp('7%'),
+    borderRadius: BorderRadius['2xl'],
+    height: ButtonHeight.lg, 
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#053F5C',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
     marginTop: 'auto', 
-    marginBottom: hp('2%'), 
+    marginBottom: hp(2), 
   },
   loginButtonText: {
-    fontFamily: 'Inter_700Bold',
-    fontSize: RFValue(16),
-    color: '#FFFFFF',
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize.md,
     letterSpacing: 1,
   },
 
   backButton: {
     alignItems: 'center',
     paddingVertical: 10,
-    marginBottom: hp('1%'),
+    marginBottom: hp(1),
   },
   backButtonText: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: RFValue(14),
-    color: '#555657', 
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.base,
   },
 });

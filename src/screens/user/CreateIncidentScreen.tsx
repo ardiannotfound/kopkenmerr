@@ -12,7 +12,7 @@ import {
 import { RFValue } from 'react-native-responsive-fontsize';
 
 import { MOCK_USERS } from '../../data/mockData';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext_OLD';
 import CustomHeader from '../../components/CustomHeader';
 
 type IncidentRouteProp = RouteProp<{ 

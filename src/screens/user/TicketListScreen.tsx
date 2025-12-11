@@ -7,7 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { MOCK_TICKETS, Ticket } from '../../data/mockData';
 import { CurrentUser } from '../../data/Session';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext_OLD';
 
 export default function TicketListScreen() {
   const { colors } = useTheme();

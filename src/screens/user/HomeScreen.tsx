@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar 
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, Platform 
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,9 +11,12 @@ import {
 } from 'react-native-responsive-screen';
 import { RFValue } from 'react-native-responsive-fontsize';
 
+// 1. IMPORT LIBRARY SAFE AREA
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 // Import Data & Components
 import { MOCK_USERS, MOCK_TICKETS } from '../../data/mockData';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext_OLD';
 import CustomHeader from '../../components/CustomHeader';
 
 type HomeScreenRouteProp = RouteProp<{ params: { userRole: string; userId?: string } }, 'params'>;
@@ -22,13 +25,14 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<HomeScreenRouteProp>();
   
+  // 2. GUNAKAN HOOK INSETS
+  const insets = useSafeAreaInsets();
+  
   const { colors, isDarkMode } = useTheme();
 
   const { userRole, userId } = route.params || { userRole: 'guest' };
   const [userName, setUserName] = useState('Masyarakat');
   const [userUnit, setUserUnit] = useState('Umum');
-
-  // CLEAN CODE: Hapus useFonts lokal
 
   useEffect(() => {
     if (userRole === 'employee' && userId) {
@@ -43,7 +47,6 @@ export default function HomeScreen() {
     }
   }, [userRole, userId]);
 
-  // --- LOGIC STATISTIK ---
   const myTickets = MOCK_TICKETS.filter(t => t.requesterId === userId);
   
   const stats = {
@@ -56,13 +59,10 @@ export default function HomeScreen() {
   const goToRequestForm = () => navigation.navigate('CreateRequest', { userRole, userId });
   const goToNotifications = () => navigation.navigate('Notifications');
 
-  const incidentColor = isDarkMode ? '#FFFFFF' : '#053F5C'; // Merah Pengaduan
-  const requestColor = isDarkMode ? '#FFFFFF' : '#053F5C';  // Biru Permintaan
-
-  // Background Icon Box (Lebih transparan di dark mode biar gak nabrak)
+  const incidentColor = isDarkMode ? '#FFFFFF' : '#053F5C'; 
+  const requestColor = isDarkMode ? '#FFFFFF' : '#053F5C';  
   const iconBg = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(51, 124, 173, 0.2)'; 
 
-  // Render Card Ringkasan
   const renderSummaryCard = (count: number, label: string) => (
     <View style={[styles.summaryCard, { backgroundColor: isDarkMode ? '#333' : 'rgba(196, 196, 196, 0.42)' }]}>
       <View style={styles.summaryCountContainer}>
@@ -80,10 +80,16 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[
+      styles.container, 
+      { 
+        backgroundColor: colors.background,
+        // 3. APPLY PADDING TOP (Agar tidak nabrak status bar/notch)
+        paddingTop: insets.top 
+      }
+    ]}>
       <StatusBar barStyle="light-content" backgroundColor="#053F5C" />
 
-      {/* 1. HEADER */}
       <CustomHeader 
         type="home"
         userName={userName}
@@ -93,29 +99,28 @@ export default function HomeScreen() {
 
       <ScrollView 
         showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ 
+          // 4. APPLY PADDING BOTTOM (Agar tidak tertutup Tab Bar & Home Indicator)
+          // 90 adalah perkiraan tinggi TabBar floating + sedikit spasi
+          paddingBottom: 100 + insets.bottom 
+        }}
       >
         <View style={styles.content}>
           
-          {/* 2. MENU LAYANAN */}
           <Text style={[styles.sectionTitle, { color: isDarkMode ? colors.text : '#053F5C' }]}>
             Menu Layanan
           </Text>
 
           <View style={styles.menuRow}>
-            {/* Tombol Pengaduan */}
             <TouchableOpacity style={styles.menuItem} onPress={goToIncidentForm}>
               <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
-                {/* Warna Ikon Dynamic */}
                 <Ionicons name="alert-circle-outline" size={RFValue(28)} color={incidentColor} />
               </View>
-              {/* Warna Teks Dynamic */}
               <Text style={[styles.menuText, { color: incidentColor }]}>
                 Pengaduan
               </Text>
             </TouchableOpacity>
 
-            {/* Tombol Permintaan (Khusus Pegawai) */}
             {userRole === 'employee' && (
               <TouchableOpacity style={styles.menuItem} onPress={goToRequestForm}>
                 <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
@@ -128,7 +133,6 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* 3. RINGKASAN LAYANAN */}
           {userRole !== 'guest' && (
             <View>
               <Text style={[styles.sectionTitle, { marginTop: hp('4%'), color: isDarkMode ? colors.text : '#053F5C' }]}>
@@ -152,6 +156,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // Note: paddingTop dihandle via inline style (insets)
   },
   content: {
     paddingHorizontal: wp('6%'),
@@ -163,13 +168,10 @@ const styles = StyleSheet.create({
     marginBottom: hp('2%'),
     textAlign: 'left',
   },
-
-  // --- MENU LAYANAN ---
   menuRow: {
     flexDirection: 'row',
-    // PERBAIKAN: Center Alignment
     justifyContent: 'center', 
-    gap: wp('10%'), // Jarak antar ikon agak lebar biar enak dilihat
+    gap: wp('10%'), 
     alignItems: 'flex-start',
   },
   menuItem: {
@@ -180,7 +182,6 @@ const styles = StyleSheet.create({
     width: wp('18%'), 
     height: wp('18%'),
     borderRadius: 15, 
-    // Background color sudah diatur inline
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -190,8 +191,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(12),
     textAlign: 'center',
   },
-
-  // --- RINGKASAN LAYANAN ---
   summaryContainer: {
     gap: hp('2%'),
   },

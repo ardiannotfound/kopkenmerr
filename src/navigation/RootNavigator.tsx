@@ -1,13 +1,24 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Platform, Text, ActivityIndicator } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { useFonts, Poppins_500Medium } from '@expo-google-fonts/poppins';
-import { useTheme } from '../context/ThemeContext';
+import { useFonts, Poppins_500Medium } from '@expo-google-fonts/poppins'; // Tetap load font disini agar aman
 
-// --- IMPORT SCREENS ---
+// --- STATE & THEME BARU ---
+import { useTheme } from '../hooks/useTheme';
+import { useAuthStore } from '../store/authStore';
+
+// --- ICONS (SVG) ---
+import BerandaIcon from '../../assets/icons/beranda.svg';
+import InfoIcon from '../../assets/icons/informasi.svg';
+import LacakIcon from '../../assets/icons/lacaktiket.svg';
+import ProfileIcon from '../../assets/icons/profile.svg';
+import ScanIcon from '../../assets/icons/scan.svg';
+import TugasIcon from '../../assets/icons/tugasteknisi.svg';
+import JadwalIcon from '../../assets/icons/kalenderteknisi.svg';
+
+// --- SCREENS ---
 // Auth
 import SplashScreen from '../screens/auth/SplashScreen';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
@@ -18,21 +29,19 @@ import EmailSentScreen from '../screens/auth/EmailSentScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import PasswordChangedScreen from '../screens/auth/PasswordChangedScreen';
 
-// User (FLOW PENGADUAN & PERMINTAAN BARU)
+// User
 import HomeScreen from '../screens/user/HomeScreen';
 import CreateIncidentScreen from '../screens/user/CreateIncidentScreen';
 import DetailIncidentScreen from '../screens/user/DetailIncidentScreen';
 import CreateRequestScreen from '../screens/user/CreateRequestScreen';
 import DetailRequestScreen from '../screens/user/DetailRequestScreen';
-
-// User (Lainnya)
 import TicketListScreen from '../screens/user/TicketListScreen';
 import TicketDetailScreen from '../screens/user/TicketDetailScreen';
 import InformationScreen from '../screens/user/InformationScreen';
 import InformationDetailScreen from '../screens/user/InformationDetailScreen';
 import SatisfactionSurveyScreen from '../screens/user/SatisfactionSurveyScreen';
 
-// Technician
+// Technician (YANG BARU KITA EDIT)
 import TechnicianHomeScreen from '../screens/technician/TechnicianHomeScreen';
 import TechnicianTaskScreen from '../screens/technician/TechnicianTaskScreen';
 import TechnicianScheduleScreen from '../screens/technician/TechnicianScheduleScreen';
@@ -51,207 +60,274 @@ import AboutAppScreen from '../screens/common/AboutAppScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// --- CUSTOM BUTTON KHUSUS SCAN QR (FLOAT) ---
-const CustomScanButton = ({ onPress }: any) => (
-  <TouchableOpacity
-    style={styles.customBtnContainer}
-    onPress={onPress}
-    activeOpacity={0.8}
-  >
-    <View style={styles.customBtnCircle}>
-      <Ionicons name="qr-code" size={30} color="#FFFFFF" />
-    </View>
-  </TouchableOpacity>
-);
+// --- COMPONENTS ---
 
-// --- CONFIG STYLE TAB BAR ---
-const screenOptionsTab = ({ route }: any) => ({
-  headerShown: false,
-  tabBarShowLabel: true,
-  tabBarActiveTintColor: '#053F5C',
-  tabBarInactiveTintColor: '#B0BEC5',
-
-  tabBarLabelStyle: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 10,
-    marginTop: -5,
-    marginBottom: 5,
-  },
-
-  tabBarStyle: {
-    height: Platform.OS === 'ios' ? 90 : 70,
-    backgroundColor: '#E9ECEF',
-    borderTopWidth: 0,
-    elevation: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    position: 'absolute',
-    bottom: 0,
-  } as any,
-
-  tabBarIcon: ({ focused, color, size }: any) => {
-    let iconName: any;
-
-    if (route.name === 'Beranda') iconName = focused ? 'home' : 'home-outline';
-    else if (route.name === 'Info') iconName = focused ? 'book' : 'book-outline';
-    else if (route.name === 'Lacak' || route.name === 'Tugas') iconName = focused ? 'list' : 'list-outline';
-    else if (route.name === 'Akun') iconName = focused ? 'person' : 'person-outline';
-    else if (route.name === 'Jadwal') iconName = focused ? 'calendar' : 'calendar-outline';
-
-    return (
-      <View style={{ alignItems: 'center', justifyContent: 'center', top: focused ? -2 : 0 }}>
-        <Ionicons name={iconName} size={24} color={color} />
+// 1. Custom Button Scan QR
+const CustomScanButton = ({ onPress }: any) => {
+  const { theme } = useTheme();
+  return (
+    <TouchableOpacity
+      style={{
+        top: -30,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={{
+        width: 66,
+        height: 66,
+        borderRadius: 33,
+        backgroundColor: theme.colors.primary, // Pakai Theme
+        borderWidth: 4,
+        borderColor: theme.colors.background.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 5,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      }}>
+        <ScanIcon width={30} height={30} color="#FFFFFF" />
       </View>
-    );
-  },
-});
+    </TouchableOpacity>
+  );
+};
 
-// A. Tab untuk Masyarakat/Pegawai
+// 2. Tab untuk Masyarakat/Pegawai
 function UserTabs() {
-  const { colors } = useTheme();
+  const { theme, colors } = useTheme();
+  
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Tab.Navigator screenOptions={screenOptionsTab}>
-        <Tab.Screen name="Beranda" component={HomeScreen} />
-        <Tab.Screen name="Info" component={InformationScreen} />
-        <Tab.Screen
-          name="Scan QR"
-          component={ScanQRScreen}
-          options={{
-            tabBarButton: (props) => <CustomScanButton {...props} />,
-            tabBarLabel: () => null,
-            tabBarStyle: { display: 'none' }
-          }}
-        />
-        <Tab.Screen name="Lacak" component={TicketListScreen} />
-        <Tab.Screen name="Akun" component={ProfileScreen} />
-      </Tab.Navigator>
-    </View>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: colors.bottomBar.icon,
+        tabBarInactiveTintColor: colors.text.secondary,
+        tabBarLabelStyle: {
+          fontFamily: 'Poppins_500Medium',
+          fontSize: 10,
+          marginTop: 5,
+          paddingBottom: 5,
+        },
+        tabBarStyle: {
+          height: Platform.OS === 'ios' ? 90 : 70,
+          backgroundColor: colors.bottomBar.background,
+          borderTopWidth: 0,
+          elevation: 10,
+          position: 'absolute',
+          bottom: 0,
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="Beranda" 
+        component={HomeScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <BerandaIcon width={24} height={24} color={color} />
+        }}
+      />
+      <Tab.Screen 
+        name="Info" 
+        component={InformationScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <InfoIcon width={24} height={24} color={color} />
+        }}
+      />
+      <Tab.Screen
+        name="Scan QR"
+        component={ScanQRScreen}
+        options={{
+          tabBarButton: (props) => <CustomScanButton {...props} />,
+          tabBarLabel: () => null,
+        }}
+      />
+      <Tab.Screen 
+        name="Lacak" 
+        component={TicketListScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <LacakIcon width={24} height={24} color={color} />
+        }}
+      />
+      <Tab.Screen 
+        name="Akun" 
+        component={ProfileScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <ProfileIcon width={24} height={24} color={color} />
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
-// B. Tab untuk Teknisi
+// 3. Tab untuk Teknisi
 function TechnicianTabs() {
-  const { colors } = useTheme();
+  const { theme, colors } = useTheme();
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <Tab.Navigator screenOptions={screenOptionsTab}>
-        <Tab.Screen name="Beranda" component={TechnicianHomeScreen} />
-        <Tab.Screen name="Tugas" component={TechnicianTaskScreen} />
-        <Tab.Screen
-          name="Scan QR"
-          component={ScanQRScreen}
-          options={{
-            tabBarButton: (props) => <CustomScanButton {...props} />,
-            tabBarLabel: () => null,
-            tabBarStyle: { display: 'none' }
-          }}
-        />
-        <Tab.Screen name="Jadwal" component={TechnicianScheduleScreen} />
-        <Tab.Screen name="Akun" component={ProfileScreen} />
-      </Tab.Navigator>
-    </View>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: colors.bottomBar.icon,
+        tabBarInactiveTintColor: colors.text.secondary,
+        tabBarLabelStyle: {
+          fontFamily: 'Poppins_500Medium',
+          fontSize: 10,
+          marginTop: 5,
+          paddingBottom: 5,
+        },
+        tabBarStyle: {
+          height: Platform.OS === 'ios' ? 90 : 70,
+          backgroundColor: colors.bottomBar.background,
+          borderTopWidth: 0,
+          elevation: 10,
+          position: 'absolute',
+          bottom: 0,
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="Dashboard" 
+        // ✅ INI YANG BARU KITA EDIT
+        component={TechnicianHomeScreen} 
+        options={{
+          tabBarLabel: 'Beranda',
+          tabBarIcon: ({ color }) => <BerandaIcon width={24} height={24} color={color} />
+        }}
+      />
+      <Tab.Screen 
+        name="Tugas" 
+        component={TechnicianTaskScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <TugasIcon width={24} height={24} color={color} />
+        }}
+      />
+      <Tab.Screen
+        name="Scan QR"
+        component={ScanQRScreen}
+        options={{
+          tabBarButton: (props) => <CustomScanButton {...props} />,
+          tabBarLabel: () => null,
+        }}
+      />
+      <Tab.Screen 
+        name="Jadwal" 
+        component={TechnicianScheduleScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <JadwalIcon width={24} height={24} color={color} />
+        }}
+      />
+      <Tab.Screen 
+        name="Akun" 
+        component={ProfileScreen} 
+        options={{
+          tabBarIcon: ({ color }) => <ProfileIcon width={24} height={24} color={color} />
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
+// --- ROOT NAVIGATOR (MAIN SWITCH) ---
 export default function RootNavigator() {
-  const { isDarkMode, colors } = useTheme(); 
+  const { colors } = useTheme();
+  const { isAuthenticated, userRole, isGuest } = useAuthStore();
+  
+  // STATE 1: Loading Font & Asset Awal
+  const [isAssetReady, setAssetReady] = useState(false);
+  
+  // STATE 2: Menunggu Animasi Splash Screen Selesai
+  const [isSplashAnimationFinished, setSplashAnimationFinished] = useState(false);
 
   let [fontsLoaded] = useFonts({
     Poppins_500Medium,
   });
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (fontsLoaded) {
+      setAssetReady(true);
+    }
+  }, [fontsLoaded]);
 
-  const MyLightTheme = {
-    ...DefaultTheme,
-    colors: {
-      ...DefaultTheme.colors,
-      background: colors.background,
-    },
-  };
+  // --- TAHAP 1: STATIC SPLASH (Native) ---
+  // Selama aset font belum siap, jangan tampilkan apa-apa (biar native splash masih ada)
+  if (!isAssetReady) {
+    return null; 
+  }
 
-  const MyDarkTheme = {
-    ...DarkTheme,
-    colors: {
-      ...DarkTheme.colors,
-      background: colors.background,
-    },
-  };
+  // --- TAHAP 2: ANIMATED SPLASH ---
+  // Aset siap, tapi animasi splash belum selesai? Tampilkan Component SplashScreen
+  if (!isSplashAnimationFinished) {
+    return (
+      <SplashScreen 
+        onFinish={() => setSplashAnimationFinished(true)} 
+      />
+    );
+  }
+
+  // --- TAHAP 3: NAVIGATOR (Aplikasi Utama) ---
+  // Baru dirender SETELAH splash selesai.
+  
+  const role = userRole();
+  const isTechnician = role === 'teknisi';
 
   return (
-    <NavigationContainer theme={isDarkMode ? MyDarkTheme : MyLightTheme}>
+    <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Splash"
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          contentStyle: { backgroundColor: colors.background },
+          contentStyle: { backgroundColor: colors.background.primary },
         }}
       >
-
-        {/* AUTH FLOW */}
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="EmailSent" component={EmailSentScreen} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
-
-        {/* MAIN APPS */}
-        <Stack.Screen name="UserApp" component={UserTabs} />
-        <Stack.Screen name="TechnicianApp" component={TechnicianTabs} />
-
-        {/* TICKET CREATION FLOW (BARU) */}
-        <Stack.Screen name="CreateIncident" component={CreateIncidentScreen} />
-        <Stack.Screen name="DetailIncident" component={DetailIncidentScreen} /> 
-        <Stack.Screen name="CreateRequest" component={CreateRequestScreen} /> 
-        <Stack.Screen name="DetailRequest" component={DetailRequestScreen} /> 
-
-        {/* COMMON SCREENS */}
-        {/* CreateTicketScreen SUDAH DIHAPUS DARI SINI KARENA SUDAH DIGANTI DI ATAS */}
-        <Stack.Screen name="Notifications" component={NotificationScreen} />
-        <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
-        <Stack.Screen name="Chat" component={ChatScreen} />
-
-        {/* INFO & PROFILE */}
-        <Stack.Screen name="Info" component={InformationScreen} />
-        <Stack.Screen name="InformationDetail" component={InformationDetailScreen} />
-        <Stack.Screen name="SatisfactionSurvey" component={SatisfactionSurveyScreen} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-        <Stack.Screen name="AboutApp" component={AboutAppScreen} />
         
-        {/* TECHNICIAN */}
-        <Stack.Screen name="AssetHistory" component={AssetHistoryScreen} />
-        <Stack.Screen name="TechPerformance" component={TechnicianPerformanceScreen} />
+        {/* LOGIC PERCABANGAN UTAMA */}
+        {!isAuthenticated && !isGuest ? (
+          // JALUR AUTH (Belum Login)
+          <Stack.Group>
+             <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+             <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+             <Stack.Screen name="Login" component={LoginScreen} />
+             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+             <Stack.Screen name="EmailSent" component={EmailSentScreen} />
+             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+             <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
+          </Stack.Group>
+        ) : (
+          // JALUR UTAMA (Sudah Login / Tamu)
+          <Stack.Group>
+            {isTechnician ? (
+               <Stack.Screen name="TechnicianApp" component={TechnicianTabs} />
+            ) : (
+               <Stack.Screen name="UserApp" component={UserTabs} />
+            )}
+          </Stack.Group>
+        )}
+
+        {/* COMMON SCREENS (Bisa diakses dari mana saja) */}
+        <Stack.Group>
+          <Stack.Screen name="CreateIncident" component={CreateIncidentScreen} />
+          <Stack.Screen name="DetailIncident" component={DetailIncidentScreen} /> 
+          <Stack.Screen name="CreateRequest" component={CreateRequestScreen} /> 
+          <Stack.Screen name="DetailRequest" component={DetailRequestScreen} /> 
+          <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+          <Stack.Screen name="Notifications" component={NotificationScreen} />
+          <Stack.Screen name="Chat" component={ChatScreen} />
+          <Stack.Screen name="Info" component={InformationScreen} />
+          <Stack.Screen name="InformationDetail" component={InformationDetailScreen} />
+          <Stack.Screen name="SatisfactionSurvey" component={SatisfactionSurveyScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+          <Stack.Screen name="AboutApp" component={AboutAppScreen} />
+          <Stack.Screen name="AssetHistory" component={AssetHistoryScreen} />
+          <Stack.Screen name="TechPerformance" component={TechnicianPerformanceScreen} />
+        </Stack.Group>
 
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  customBtnContainer: {
-    top: -30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  customBtnCircle: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    backgroundColor: '#053F5C',
-    borderWidth: 4,
-    borderColor: '#E9ECEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#053F5C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-});

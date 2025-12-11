@@ -20,7 +20,7 @@ import {
 // Imports
 import { MOCK_NOTIFICATIONS, NotificationItem } from '../../data/mockData';
 import { CurrentUser } from '../../data/Session';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext_OLD';
 import CustomHeader from '../../components/CustomHeader';
 
 export default function NotificationScreen() {

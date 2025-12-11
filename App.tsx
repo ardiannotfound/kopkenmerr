@@ -1,36 +1,31 @@
 import React from 'react';
-import { LogBox } from 'react-native'; 
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 
 import RootNavigator from './src/navigation/RootNavigator';
-import { ThemeProvider } from './src/context/ThemeContext';
+import { ThemeProvider } from './src/context/ThemeContext_OLD';
 import useCachedResources from './src/hooks/useCachedResources';
 
 export default function App() {
   const isLoadingComplete = useCachedResources();
 
-  // 2. Custom Metrics untuk fix space bawah navigasi Android
-  const customMetrics = {
-    frame: initialWindowMetrics?.frame || { x: 0, y: 0, width: 0, height: 0 },
-    insets: {
-      top: initialWindowMetrics?.insets.top ?? 0,
-      left: initialWindowMetrics?.insets.left ?? 0,
-      right: initialWindowMetrics?.insets.right ?? 0,
-      bottom: 0, 
-    },
-  };
-
-  // 3. Jika belum selesai load, return null (Splash Native masih tampil)
   if (!isLoadingComplete) {
     return null;
   }
 
   return (
     <ThemeProvider>
-      <SafeAreaProvider initialMetrics={customMetrics} style={{ flex: 1, backgroundColor: '#053F5C' }}>
+      {/* PERBAIKAN: 
+        1. Hapus customMetrics yang memaksa bottom: 0. 
+        2. Gunakan initialMetrics={initialWindowMetrics} bawaan.
+        3. Hapus style background hardcode '#053F5C' agar tidak bentrok dengan Dark Mode.
+           Warna background sekarang dikontrol penuh oleh RootNavigator/ThemeContext.
+      */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <RootNavigator />
-        <StatusBar style="auto" /> 
+        
+        {/* Status Bar style 'light' agar tulisan jam/baterai putih (karena header kita biru gelap) */}
+        <StatusBar style="light" backgroundColor="#053F5C" /> 
       </SafeAreaProvider>
     </ThemeProvider>
   );

@@ -1,67 +1,50 @@
 import { useEffect, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons'; 
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { Asset } from 'expo-asset'; // <--- IMPORT PENTING
-
-// Import Font Google
-import { 
-  Poppins_400Regular, 
-  Poppins_500Medium, 
-  Poppins_600SemiBold, 
-  Poppins_700Bold 
-} from '@expo-google-fonts/poppins';
-import { 
-  Inter_400Regular, 
-  Inter_600SemiBold, 
-  Inter_700Bold 
-} from '@expo-google-fonts/inter';
-import { KonkhmerSleokchher_400Regular } from '@expo-google-fonts/konkhmer-sleokchher';
+import { Asset } from 'expo-asset'; 
 
 export default function useCachedResources() {
   const [isLoadingComplete, setLoadingComplete] = useState(false);
 
-  // Load any resources or data that we need prior to rendering the app
   useEffect(() => {
     async function loadResourcesAndDataAsync() {
       try {
         SplashScreen.preventAutoHideAsync();
 
-        // 1. DAFTAR GAMBAR YANG MAU DI-CACHE
-        // Masukkan semua gambar yang muncul di Auth/Onboarding/Common
+        // 1. CACHE GAMBAR
         const imageAssets = [
-          require('../../assets/siladan.png'),      // Logo
-          require('../../assets/auth-header.png'),  // Header
+          require('../../assets/siladan.png'),      
+          require('../../assets/auth-header.png'),  
           require('../../assets/onboarding/o1.png'),
           require('../../assets/onboarding/o2.png'),
           require('../../assets/onboarding/o3.png'),
           require('../../assets/email-sent.png'),
           require('../../assets/password.png'),
           require('../../assets/role-selection.png'),
-          // Gambar lain jika ada (misal empty state notif jika itu gambar png)
         ];
 
-        // Fungsi helper untuk cache gambar
         const cacheImages = imageAssets.map(image => {
           return Asset.fromModule(image).downloadAsync();
         });
 
-        // 2. EKSEKUSI LOAD (Parallel: Font & Gambar barengan)
+        // 2. LOAD FONT LOKAL (Dari folder assets/fonts)
+        // Kunci di sebelah kiri ('Poppins-Bold') harus SAMA PERSIS dengan yang ada di typography.ts
         await Promise.all([
-          // Load Font
           Font.loadAsync({
-            KonkhmerSleokchher_400Regular,
-            Poppins_400Regular,
-            Poppins_500Medium,
-            Poppins_600SemiBold,
-            Poppins_700Bold,
-            Inter_400Regular,
-            Inter_600SemiBold,
-            Inter_700Bold,
             ...Ionicons.font,
+            
+            // --- POPPINS ---
+            'Poppins-Light': require('../../assets/fonts/Poppins-Light.ttf'),
+            'Poppins-Regular': require('../../assets/fonts/Poppins-Regular.ttf'),
+            'Poppins-Medium': require('../../assets/fonts/Poppins-Medium.ttf'),
+            'Poppins-SemiBold': require('../../assets/fonts/Poppins-SemiBold.ttf'),
+            'Poppins-Bold': require('../../assets/fonts/Poppins-Bold.ttf'),
+
+            // --- KHMER (Untuk Logo/Splash) ---
+            'KhmerSleokchher-Regular': require('../../assets/fonts/KonkhmerSleokchher-Regular.ttf'),
           }),
           
-          // Load Images
           ...cacheImages,
         ]);
 
@@ -69,7 +52,8 @@ export default function useCachedResources() {
         console.warn(e);
       } finally {
         setLoadingComplete(true);
-        // SplashScreen.hideAsync() dilakukan di SplashScreen.tsx setelah animasi selesai
+        // Sembunyikan Splash Screen setelah selesai load
+        SplashScreen.hideAsync();
       }
     }
 
