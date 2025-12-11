@@ -1,38 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, StatusBar, Linking, Alert 
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, StatusBar, Linking, Alert, ActivityIndicator 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// CLEAN CODE: Hapus import useFonts karena sudah diload global
-// Hapus import font files juga
-
-import { useTheme } from '../../context/ThemeContext_OLD';
+// --- IMPORTS SYSTEM BARU ---
 import CustomHeader from '../../components/CustomHeader';
-import { MOCK_ARTICLES } from '../../data/mockData';
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- API & DATA ---
+import { kbApi } from '../../services/api/kb';
 
 export default function InformationScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { colors, isDarkMode } = useTheme();
+  const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   
   // State
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>(null); 
   const [isViewAll, setIsViewAll] = useState(false);
 
-  // CLEAN CODE: Hapus useFonts hook
-  // Font sudah siap dari App.tsx
+  // --- LOAD DATA ---
+  useEffect(() => {
+    loadArticles();
+  }, []);
 
-  // --- LOGIC DATA ---
-  const getDataToRender = () => {
-    let data = MOCK_ARTICLES;
+  const loadArticles = async () => {
+    try {
+      setLoading(true);
+      // Panggil API KB
+      // const response = await kbApi.getAll(); 
+      // setArticles(response.data);
+      
+      // MOCK DATA SEMENTARA (Sampai API Ready)
+      setTimeout(() => {
+        setArticles([
+          { id: 1, title: 'Cara Membuat Pengaduan Baru', category: 'Pengaduan & Permintaan' },
+          { id: 2, title: 'Berapa lama tiket saya diproses?', category: 'Proses & Tindak Lanjut' },
+          { id: 3, title: 'Lupa Password Akun', category: 'Informasi Layanan' },
+          { id: 4, title: 'Menghubungi Helpdesk via WA', category: 'Informasi Layanan' },
+          { id: 5, title: 'Perbedaan Insiden dan Request', category: 'Pengaduan & Permintaan' },
+        ]);
+        setLoading(false);
+      }, 500);
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+    }
+  };
+
+  // --- FILTER LOGIC ---
+  const getFilteredData = () => {
+    let data = articles;
 
     if (searchQuery) {
       return data.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -43,7 +68,7 @@ export default function InformationScreen() {
     }
     
     if (!isViewAll) {
-      return data.slice(0, 4); 
+      return data.slice(0, 4); // Limit 4 item di awal
     }
     return data;
   };
@@ -68,13 +93,6 @@ export default function InformationScreen() {
     });
   };
 
-  // CLEAN CODE: Hapus if (!fontsLoaded) return null;
-
-  const textColor = isDarkMode ? '#FFFFFF' : '#053F5C';
-  const cardBg = isDarkMode ? '#1E1E1E' : '#FFFFFF';
-  const searchBg = isDarkMode ? '#333333' : '#F5F5F5';
-  const itemBg = isDarkMode ? '#2C2C2C' : '#F8F8F8';
-
   const isFocusMode = !!searchQuery || !!activeFilter || isViewAll;
 
   const getListTitle = () => {
@@ -85,8 +103,12 @@ export default function InformationScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <StatusBar 
+        barStyle={isDark ? "light-content" : "dark-content"} 
+        backgroundColor="transparent" 
+        translucent 
+      />
       
       <CustomHeader 
         type="page"
@@ -101,46 +123,65 @@ export default function InformationScreen() {
       >
         
         {/* SEARCH BAR */}
-        <View style={[styles.searchBox, { backgroundColor: searchBg }]}>
+        <View style={[
+          styles.searchBox, 
+          { backgroundColor: colors.background.card } // Adaptif Dark Mode
+        ]}>
           {isFocusMode ? (
             <TouchableOpacity onPress={handleReset}>
-              <Ionicons name="arrow-back" size={24} color={isDarkMode ? '#AAA' : '#053F5C'} />
+              <Ionicons name="arrow-back" size={24} color={colors.text.secondary} />
             </TouchableOpacity>
           ) : (
-            <Ionicons name="search" size={24} color={isDarkMode ? '#AAA' : '#053F5C'} />
+            <Ionicons name="search" size={24} color={colors.text.secondary} />
           )}
           
           <TextInput 
-            style={[styles.searchInput, { color: textColor }]}
+            style={[styles.searchInput, { color: colors.text.primary }]}
             placeholder="Cari Pertanyaan atau topik"
-            placeholderTextColor={isDarkMode ? '#888' : 'rgba(85, 86, 87, 0.5)'}
+            placeholderTextColor={colors.text.secondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#999" />
+              <Ionicons name="close-circle" size={20} color={colors.text.tertiary} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* KATEGORI */}
+        {/* KATEGORI (Hanya tampil di awal) */}
         {!isFocusMode && (
           <>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>Bantuan dan Panduan</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
+              Bantuan dan Panduan
+            </Text>
             <View style={styles.categoryContainer}>
-              <TouchableOpacity style={[styles.catCard, { backgroundColor: cardBg }]} onPress={() => handleCategoryPress('Pengaduan & Permintaan')}>
-                <Ionicons name="ticket-outline" size={32} color="#0E638C" style={{ opacity: 0.71 }} />
-                <Text style={[styles.catText, { color: textColor }]}>Pengaduan & Permintaan</Text>
+              {/* Cat 1 */}
+              <TouchableOpacity 
+                style={[styles.catCard, { backgroundColor: colors.background.card }]} 
+                onPress={() => handleCategoryPress('Pengaduan & Permintaan')}
+              >
+                <Ionicons name="ticket-outline" size={32} color="#0E638C" style={{ opacity: 0.8 }} />
+                <Text style={[styles.catText, { color: colors.text.primary }]}>Pengaduan & Permintaan</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.catCard, { backgroundColor: cardBg }]} onPress={() => handleCategoryPress('Proses & Tindak Lanjut')}>
+              
+              {/* Cat 2 */}
+              <TouchableOpacity 
+                style={[styles.catCard, { backgroundColor: colors.background.card }]} 
+                onPress={() => handleCategoryPress('Proses & Tindak Lanjut')}
+              >
                 <MaterialCommunityIcons name="check-decagram-outline" size={32} color="#FF9500" />
-                <Text style={[styles.catText, { color: textColor }]}>Proses & Tindak Lanjut</Text>
+                <Text style={[styles.catText, { color: colors.text.primary }]}>Proses & Tindak Lanjut</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.catCard, { backgroundColor: cardBg }]} onPress={() => handleCategoryPress('Informasi Layanan')}>
+              
+              {/* Cat 3 */}
+              <TouchableOpacity 
+                style={[styles.catCard, { backgroundColor: colors.background.card }]} 
+                onPress={() => handleCategoryPress('Informasi Layanan')}
+              >
                 <Ionicons name="information-circle" size={32} color="#C64747" />
-                <Text style={[styles.catText, { color: textColor }]}>Informasi Layanan</Text>
+                <Text style={[styles.catText, { color: colors.text.primary }]}>Informasi Layanan</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -148,138 +189,203 @@ export default function InformationScreen() {
 
         {/* LIST PERTANYAAN */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: textColor, marginBottom: 0 }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text.primary, marginBottom: 0 }]}>
             {getListTitle()}
           </Text>
           {!isFocusMode && (
             <TouchableOpacity onPress={() => setIsViewAll(true)}>
-              <Text style={styles.seeAllText}>Lihat semua</Text>
+              <Text style={[styles.seeAllText, { color: colors.primary }]}>Lihat semua</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.listContainer}>
-          {getDataToRender().map((item) => (
-            <TouchableOpacity 
-              key={item.id} 
-              style={[styles.questionItem, { backgroundColor: itemBg }]}
-              onPress={() => navigation.navigate('InformationDetail', { articleId: item.id })}
-            >
-              <Text style={[styles.questionText, { color: textColor }]} numberOfLines={2}>
-                {item.title}
+        {/* List Content */}
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+        ) : (
+          <View style={styles.listContainer}>
+            {getFilteredData().map((item) => (
+              <TouchableOpacity 
+                key={item.id} 
+                style={[styles.questionItem, { backgroundColor: colors.background.card }]}
+                onPress={() => navigation.navigate('InformationDetail', { articleId: item.id })}
+              >
+                <Text style={[styles.questionText, { color: colors.text.primary }]} numberOfLines={2}>
+                  {item.title}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+              </TouchableOpacity>
+            ))}
+            
+            {getFilteredData().length === 0 && (
+              <Text style={{ textAlign: 'center', marginTop: 20, color: colors.text.secondary }}>
+                Tidak ada hasil ditemukan.
               </Text>
-              <Ionicons name="chevron-forward" size={20} color={textColor} />
-            </TouchableOpacity>
-          ))}
-          
-          {getDataToRender().length === 0 && (
-            <Text style={{ textAlign: 'center', marginTop: 20, color: '#999' }}>
-              Tidak ada hasil ditemukan.
-            </Text>
-          )}
-        </View>
+            )}
+          </View>
+        )}
 
         {/* FOOTER */}
         {!isFocusMode && (
           <View style={styles.footerSection}>
-            <Text style={[styles.footerTitle, { color: textColor }]}>Butuh Bantuan Lebih Lanjut?</Text>
+            <Text style={[styles.footerTitle, { color: colors.text.primary }]}>
+              Butuh Bantuan Lebih Lanjut?
+            </Text>
             <View style={styles.helpButtonRow}>
-              <TouchableOpacity style={styles.helpButtonLeft}>
-                <View style={styles.iconCircleBlack}>
+              
+              <TouchableOpacity style={[styles.helpButton, { backgroundColor: isDark ? '#333' : '#E0E7EF' }]}>
+                <View style={[styles.iconCircle, { backgroundColor: '#000' }]}>
                   <Ionicons name="chatbubble-ellipses" size={14} color="#FFF" />
                 </View>
-                <Text style={styles.helpButtonTextBlue}>Chat Helpdesk</Text>
+                <Text style={[styles.helpButtonText, { color: isDark ? '#FFF' : '#053F5C' }]}>
+                  Chat Helpdesk
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.helpButtonRight} onPress={handleWhatsApp}>
-                <View style={styles.iconCircleGreen}>
+
+              <TouchableOpacity 
+                style={[styles.helpButton, { backgroundColor: isDark ? '#333' : '#E0E7EF' }]} 
+                onPress={handleWhatsApp}
+              >
+                <View style={[styles.iconCircle, { backgroundColor: '#25D366' }]}>
                   <Ionicons name="logo-whatsapp" size={14} color="#FFF" />
                 </View>
-                <Text style={styles.helpButtonTextBlue}>Hubungi WhatsApp</Text>
+                <Text style={[styles.helpButtonText, { color: isDark ? '#FFF' : '#053F5C' }]}>
+                  Hubungi WA
+                </Text>
               </TouchableOpacity>
+
             </View>
           </View>
         )}
 
-        <View style={{ height: hp('5%') }} /> 
+        <View style={{ height: hp(10) }} /> 
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  contentContainer: {
-    paddingHorizontal: wp('6%'),
-    paddingTop: hp('2%'),
-    paddingBottom: hp('12%'), 
+  container: { 
+    flex: 1 
   },
+  contentContainer: {
+    paddingHorizontal: wp(6),
+    paddingTop: hp(2),
+    paddingBottom: hp(5), 
+  },
+  
+  // Search Box
   searchBox: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 12, 
-    paddingHorizontal: 15, height: hp('6.5%'), marginBottom: hp('3%'),
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    borderRadius: BorderRadius.lg, 
+    paddingHorizontal: Spacing.md, 
+    height: hp(6.5), 
+    marginBottom: Spacing.lg,
+    ...Shadow.sm, // Shadow standar
   },
   searchInput: {
-    flex: 1, marginLeft: 10, fontFamily: 'Poppins_700Bold', fontSize: RFValue(12),
+    flex: 1, 
+    marginLeft: 10, 
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: FontSize.sm,
   },
+
+  // Titles
   sectionTitle: {
-    fontFamily: 'Poppins_600SemiBold', fontSize: RFValue(14), marginBottom: hp('1.5%'), textAlign: 'left',
+    fontFamily: FontFamily.poppins.semibold, 
+    fontSize: FontSize.md, 
+    marginBottom: Spacing.sm, 
+    textAlign: 'left',
   },
   sectionHeaderRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: hp('1.5%'), marginTop: hp('2%'),
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    marginBottom: Spacing.sm, 
+    marginTop: Spacing.md,
   },
   seeAllText: {
-    fontFamily: 'Poppins_500Medium', fontSize: RFValue(12), color: 'rgba(5, 63, 92, 0.72)', 
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: FontSize.xs, 
   },
+
+  // Categories Grid
   categoryContainer: {
-    flexDirection: 'row', justifyContent: 'space-between',
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
   },
   catCard: {
-    width: wp('28%'), height: wp('28%'), borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center', padding: 8,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 3, elevation: 3,
+    width: wp(28), 
+    height: wp(28), 
+    borderRadius: BorderRadius.lg,
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 8,
+    ...Shadow.sm,
   },
   catText: {
-    fontFamily: 'Poppins_500Medium', fontSize: RFValue(10), textAlign: 'center', marginTop: 8,
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: 10, 
+    textAlign: 'center', 
+    marginTop: 8,
   },
+
+  // List Items
   listContainer: {
-    gap: hp('1.2%'),
+    gap: Spacing.sm,
   },
   questionItem: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 15, paddingVertical: 12, borderRadius: 11, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md, 
+    paddingVertical: Spacing.md, 
+    borderRadius: BorderRadius.md, 
   },
   questionText: {
-    fontFamily: 'Inter_400Regular', fontSize: RFValue(12), flex: 1, marginRight: 10,
+    fontFamily: FontFamily.poppins.regular, 
+    fontSize: FontSize.sm, 
+    flex: 1, 
+    marginRight: 10,
   },
+
+  // Footer Buttons
   footerSection: {
-    marginTop: hp('3%'), alignItems: 'center',
+    marginTop: Spacing.xl, 
+    alignItems: 'center',
   },
   footerTitle: {
-    fontFamily: 'Poppins_600SemiBold', fontSize: RFValue(14), marginBottom: hp('2%'), textAlign: 'center',
+    fontFamily: FontFamily.poppins.semibold, 
+    fontSize: FontSize.md, 
+    marginBottom: Spacing.sm, 
+    textAlign: 'center',
   },
   helpButtonRow: {
-    flexDirection: 'row', justifyContent: 'space-between', width: '100%', gap: 10,
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    width: '100%', 
+    gap: 10,
   },
-  helpButtonLeft: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E7EF',
-    borderRadius: 12, paddingVertical: 12, paddingHorizontal: 10, justifyContent: 'center',
+  helpButton: {
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    borderRadius: BorderRadius.lg, 
+    paddingVertical: 12, 
+    paddingHorizontal: 10, 
+    justifyContent: 'center',
   },
-  helpButtonRight: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#E0E7EF',
-    borderRadius: 12, paddingVertical: 12, paddingHorizontal: 10, justifyContent: 'center',
+  iconCircle: {
+    width: 24, 
+    height: 24, 
+    borderRadius: 12, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 8,
   },
-  iconCircleBlack: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#000000',
-    justifyContent: 'center', alignItems: 'center', marginRight: 8,
-  },
-  iconCircleGreen: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#25D366', 
-    justifyContent: 'center', alignItems: 'center', marginRight: 8,
-  },
-  helpButtonTextBlue: {
-    fontFamily: 'Poppins_500Medium', fontSize: RFValue(11), color: '#053F5C',
+  helpButtonText: {
+    fontFamily: FontFamily.poppins.medium, 
+    fontSize: FontSize.xs, 
   },
 });

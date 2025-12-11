@@ -1,28 +1,36 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert 
+  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert, ScrollView 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { MOCK_TICKETS, Ticket } from '../../data/mockData';
-import { CurrentUser } from '../../data/Session';
-import { useTheme } from '../../context/ThemeContext_OLD';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+
+// --- IMPORTS SYSTEM BARU ---
+import CustomHeader from '../../components/CustomHeader';
+import { useTheme } from '../../hooks/useTheme';
+import { useAuthStore } from '../../store/authStore';
+import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- IMPORTS DATA ---
+import { MOCK_TICKETS, Ticket } from '../../data/mockData'; 
+
+// --- IMPORTS ICONS SVG (Pastikan file ada) ---
+import KananIcon from '../../../assets/icons/kanan.svg';
+// Gunakan Ionicons sementara jika SVG status belum lengkap, atau import SVG status disini
 
 export default function TicketListScreen() {
-  const { colors } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const userRole = CurrentUser.role;
+  const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
+  const { isGuest } = useAuthStore(); 
 
   // --- STATE ---
   const [searchId, setSearchId] = useState('');
   const [guestSearchResult, setGuestSearchResult] = useState<Ticket[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [activeTab, setActiveTab] = useState<'incident' | 'request'>('incident');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-  // --- LOGIC GUEST ---
+  // --- LOGIC MASYARAKAT ---
   const handleGuestSearch = () => {
     if (!searchId.trim()) {
       Alert.alert("Error", "Mohon masukkan Nomor Tiket.");
@@ -35,159 +43,189 @@ export default function TicketListScreen() {
     setGuestSearchResult(result);
   };
 
-  // --- LOGIC EMPLOYEE ---
+  // --- LOGIC PEGAWAI ---
   const getEmployeeData = () => {
-    let data = MOCK_TICKETS;
-    // data = data.filter(t => t.requesterId === CurrentUser.userId); // Uncomment for real app
-    data = data.filter(t => t.type === activeTab);
-    if (statusFilter !== 'All') {
-      data = data.filter(t => t.status === statusFilter);
-    }
-    return data;
+    return MOCK_TICKETS.filter(t => t.type === activeTab);
   };
 
-  const getStatusColor = (status: string) => {
+  // --- HELPER STYLE ---
+  const getTypeStyle = (type: string) => {
+    if (type === 'incident') {
+      return { 
+        label: 'Pengaduan', 
+        color: '#FF9500', 
+        bg: 'rgba(255, 149, 0, 0.15)' // Background terang
+      }; 
+    }
+    return { 
+      label: 'Permintaan', 
+      color: '#337CAD', 
+      bg: 'rgba(51, 124, 173, 0.15)' 
+    }; 
+  };
+
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'pending': return '#ff9800'; 
-      case 'in_progress': return '#2196f3'; 
-      case 'resolved': return '#4caf50'; 
-      case 'closed': return '#9e9e9e'; 
-      default: return '#333';
+      case 'closed': return { label: 'Closed', color: '#D32F2F', icon: 'close-circle' };
+      case 'resolved': return { label: 'Selesai', color: '#4FEA17', icon: 'checkmark-circle' };
+      case 'pending': return { label: 'Pending', color: '#555657', icon: 'time' };
+      case 'in_progress': 
+      case 'assigned': return { label: 'Dikerjakan Teknisi', color: '#053F5C', icon: 'hammer' };
+      default: return { label: status, color: '#333', icon: 'help-circle' };
     }
   };
 
-  // --- RENDER ITEM ---
-  const renderItem = ({ item }: { item: Ticket }) => (
-    <TouchableOpacity 
-      style={[styles.card, { backgroundColor: colors.card }]} 
-      onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.typeTag}>
-          <Text style={styles.typeText}>{item.type === 'incident' ? 'INSIDEN' : 'REQUEST'}</Text>
-        </View>
-        <Text style={styles.date}>ID: {item.ticketNumber}</Text>
-      </View>
-      
-      <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-      <Text style={[styles.desc, { color: colors.subText }]} numberOfLines={2}>{item.description}</Text>
+  // --- RENDER TICKET CARD ---
+  const renderTicketCard = ({ item }: { item: Ticket }) => {
+    const typeInfo = getTypeStyle(item.type);
+    const statusInfo = getStatusConfig(item.status);
 
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status.toUpperCase().replace('_', ' ')}</Text>
+    return (
+      <TouchableOpacity 
+        style={[styles.card, { backgroundColor: colors.background.card }]}
+        onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })}
+        activeOpacity={0.8}
+      >
+        {/* BAGIAN ATAS */}
+        <View style={styles.cardTop}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            {/* 1. Label Tipe dengan Background Rounded */}
+            <View style={[styles.typeBadge, { backgroundColor: typeInfo.bg }]}>
+              <Text style={[styles.typeText, { color: typeInfo.color }]}>
+                {typeInfo.label}
+              </Text>
+            </View>
+            
+            {/* Judul Tiket */}
+            <Text style={[styles.ticketTitle, { color: colors.primary }]}>
+              {item.title}
+            </Text>
+          </View>
+
+          {/* Nomor Tiket (Kanan) */}
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Nomor Tiket</Text>
+            <Text style={[styles.ticketNumber, { color: colors.primary }]}>{item.ticketNumber}</Text>
+          </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.icon} />
-      </View>
-    </TouchableOpacity>
-  );
+
+        {/* GARIS PEMBATAS */}
+        <View style={[styles.divider, { backgroundColor: colors.border.light }]} />
+
+        {/* BAGIAN BAWAH: 3 Kolom Grid */}
+        <View style={styles.cardBottom}>
+          
+          {/* KOLOM 1: Status Terkini */}
+          <View style={styles.statusCol}>
+            <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Status Terkini</Text>
+            <View style={styles.statusRow}>
+              <Ionicons name={statusInfo.icon as any} size={16} color={statusInfo.color} style={{ marginRight: 5 }} />
+              <Text style={[styles.statusValue, { color: statusInfo.color }]} numberOfLines={1}>
+                {statusInfo.label}
+              </Text>
+            </View>
+          </View>
+
+          {/* KOLOM 2: Spacer (Flexible) */}
+          <View style={{ flex: 1 }} />
+
+          {/* KOLOM 3: Diperbarui & Icon Kanan */}
+          <View style={styles.dateCol}>
+            <View style={styles.updatedHeader}>
+              <Text style={[styles.labelSmall, { color: colors.text.secondary }]}>Diperbarui</Text>
+              <View style={styles.chevronBox}>
+                 <KananIcon width={12} height={12} color={colors.text.tertiary} />
+              </View>
+            </View>
+            <Text style={[styles.dateText, { color: colors.text.primary }]}>
+              25 Okt 2025, 18:00
+            </Text>
+          </View>
+
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       
-      {/* === TAMPILAN MASYARAKAT (GUEST) === */}
-      {userRole === 'guest' ? (
-        <View style={styles.guestContainer}>
-          <View style={styles.searchBox}>
-            <Text style={styles.searchLabel}>Lacak Status Tiket</Text>
-            <Text style={styles.searchSubLabel}>Masukkan Nomor ID Tiket Anda untuk melihat status terkini.</Text>
-            
-            <TextInput 
-              style={[styles.input, { color: '#000' }]} 
-              placeholder="Contoh: INC-202312-001"
-              value={searchId}
-              onChangeText={setSearchId}
-              autoCapitalize="characters"
-            />
-            
-            <TouchableOpacity style={styles.searchBtn} onPress={handleGuestSearch}>
-              <Ionicons name="search" size={20} color="#fff" style={{marginRight: 10}} />
-              <Text style={styles.searchBtnText}>Cari Tiket</Text>
-            </TouchableOpacity>
+      {/* HEADER */}
+      <CustomHeader 
+        type="page" 
+        title="Lacak Status Tiket"
+        showNotificationButton={!isGuest} 
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
+
+      {/* BODY CONTENT */}
+      {isGuest ? (
+        // VIEW GUEST
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={[styles.searchBox, { backgroundColor: colors.primary }]}>
+            <Text style={styles.searchTitle}>Cari Tiket Anda</Text>
+            <Text style={styles.searchDesc}>Masukkan ID Tiket lengkap untuk melihat progres.</Text>
+            <View style={styles.inputContainer}>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Contoh: INC-2025-001"
+                placeholderTextColor="#999"
+                value={searchId}
+                onChangeText={setSearchId}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity style={styles.searchBtn} onPress={handleGuestSearch}>
+                <Text style={styles.searchBtnText}>Cari Tiket</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <FlatList
-            data={guestSearchResult}
-            keyExtractor={item => item.id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              hasSearched ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="close-circle-outline" size={50} color={colors.subText} />
-                  <Text style={[styles.emptyText, { color: colors.text }]}>Tiket tidak ditemukan.</Text>
-                  <Text style={[styles.emptySub, { color: colors.subText }]}>Pastikan ID Tiket benar.</Text>
-                </View>
-              ) : null
-            }
-          />
-        </View>
-      ) : (
-        // === TAMPILAN PEGAWAI (EMPLOYEE) ===
-        <View style={{flex: 1}}>
-          <View style={[styles.header, { backgroundColor: colors.card }]}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Daftar Tiket Saya</Text>
-          </View>
-
-          <View style={[styles.tabContainer, { backgroundColor: colors.card }]}>
-            <TouchableOpacity 
-              style={[styles.tabBtn, activeTab === 'incident' && styles.tabBtnActive]} 
-              onPress={() => setActiveTab('incident')}
-            >
-              <Text style={[styles.tabText, { color: colors.subText }, activeTab === 'incident' && styles.tabTextActive]}>Pengaduan</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.tabBtn, activeTab === 'request' && styles.tabBtnActive]} 
-              onPress={() => setActiveTab('request')}
-            >
-              <Text style={[styles.tabText, { color: colors.subText }, activeTab === 'request' && styles.tabTextActive]}>Permintaan</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* FILTER ROW (Hanya 1 Kali Saja) */}
-          <View style={[styles.filterRow, { backgroundColor: colors.background }]}>
-            <Text style={[styles.filterLabel, { color: colors.subText }]}>Status:</Text>
-            <TouchableOpacity 
-              style={[styles.dropdownTrigger, { backgroundColor: colors.card, borderColor: colors.border }]} 
-              onPress={() => setShowStatusDropdown(!showStatusDropdown)}
-            >
-              <Text style={[styles.dropdownText, { color: colors.text }]}>
-                {statusFilter === 'All' ? 'Semua Status' : statusFilter.toUpperCase().replace('_', ' ')}
+          {hasSearched && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <Text style={[styles.resultTitle, { color: colors.text.primary }]}>
+                Hasil Pencarian :
               </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          {/* DROPDOWN MENU (Perbaikan Warna Dark Mode) */}
-          {showStatusDropdown && (
-            <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {['All', 'pending', 'in_progress', 'resolved', 'closed'].map((status) => (
-                <TouchableOpacity 
-                  key={status} 
-                  style={[styles.dropdownItem, { borderBottomColor: colors.border }]}
-                  onPress={() => {
-                    setStatusFilter(status);
-                    setShowStatusDropdown(false);
-                  }}
-                >
-                  <Text style={{color: statusFilter === status ? '#007AFF' : colors.text}}>
-                    {status === 'All' ? 'Semua Status' : status.toUpperCase().replace('_', ' ')}
-                  </Text>
-                  {statusFilter === status && <Ionicons name="checkmark" size={16} color="#007AFF" />}
-                </TouchableOpacity>
-              ))}
+              {guestSearchResult.length > 0 ? (
+                guestSearchResult.map(item => (
+                  <View key={item.id} style={{ marginTop: 10 }}>
+                    {renderTicketCard({ item })}
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={{ color: colors.text.secondary }}>Tiket tidak ditemukan.</Text>
+                </View>
+              )}
             </View>
           )}
+        </ScrollView>
+      ) : (
+        // VIEW PEGAWAI
+        <View style={styles.contentPegawai}>
+          <View style={[styles.tabContainer, { backgroundColor: colors.background.card }]}>
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'incident' && { borderBottomColor: colors.primary }]} 
+              onPress={() => setActiveTab('incident')}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'incident' ? colors.primary : colors.text.secondary }]}>Pengaduan</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.tabBtn, activeTab === 'request' && { borderBottomColor: colors.primary }]} 
+              onPress={() => setActiveTab('request')}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'request' ? colors.primary : colors.text.secondary }]}>Permintaan</Text>
+            </TouchableOpacity>
+          </View>
 
-          {/* LIST PEGAWAI */}
           <FlatList
             data={getEmployeeData()}
             keyExtractor={item => item.id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
+            renderItem={renderTicketCard}
+            contentContainerStyle={{ padding: Spacing.lg, paddingBottom: hp(10) }}
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <Ionicons name="file-tray-outline" size={60} color={colors.subText} />
-                <Text style={[styles.emptyText, { color: colors.text }]}>Belum ada tiket.</Text>
+                <Ionicons name="file-tray-outline" size={40} color={colors.text.tertiary} />
+                <Text style={{ color: colors.text.secondary, marginTop: 10 }}>Belum ada tiket.</Text>
               </View>
             }
           />
@@ -198,48 +236,155 @@ export default function TicketListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }, 
-  listContent: { padding: 20 },
-  card: { borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:5 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  typeTag: { backgroundColor: '#e3f2fd', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  typeText: { fontSize: 10, fontWeight: 'bold', color: '#1976d2' },
-  date: { fontSize: 12, color: '#888' },
-  title: { fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
-  desc: { fontSize: 14, marginBottom: 10 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, paddingTop: 10 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  statusText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  container: { flex: 1 },
+  content: { padding: Spacing.lg },
+  contentPegawai: { flex: 1 },
 
-  // Styles Guest (Search)
-  guestContainer: { flex: 1 },
-  searchBox: { backgroundColor: '#007AFF', padding: 25, paddingTop: 60, borderBottomLeftRadius: 25, borderBottomRightRadius: 25, marginBottom: 10 },
-  searchLabel: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 5 },
-  searchSubLabel: { fontSize: 14, color: '#e3f2fd', marginBottom: 20 },
-  input: { backgroundColor: '#fff', borderRadius: 8, padding: 15, fontSize: 16, marginBottom: 15 },
-  searchBtn: { backgroundColor: '#004ba0', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 15, borderRadius: 8 },
-  searchBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  // --- CARD STYLE ---
+  card: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    ...Shadow.sm,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: Spacing.sm,
+  },
   
-  // Empty State
-  emptyState: { alignItems: 'center', marginTop: 50 },
-  emptyText: { fontSize: 16, fontWeight: 'bold', marginTop: 10 },
-  emptySub: { fontSize: 14, marginTop: 5 },
+  // NEW: Badge Style untuk Tipe (Kotak rounded dengan warna pudar)
+  typeBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  typeText: {
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: 10,
+  },
+  
+  ticketTitle: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.md,
+  },
+  labelSmall: {
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: 10,
+  },
+  ticketNumber: {
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize.sm,
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: Spacing.sm,
+  },
 
-  // Styles Pegawai
-  header: { padding: 20, paddingTop: 50 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
-  
-  tabContainer: { flexDirection: 'row', padding: 10 },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabBtnActive: { borderBottomColor: '#007AFF' },
-  tabText: { fontSize: 16, fontWeight: '600' },
-  tabTextActive: { color: '#007AFF' },
+  // NEW: Bottom Layout (3 Bagian)
+  cardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end', // Align bawah agar rapi
+  },
+  statusCol: {
+    flex: 2, // Kolom Kiri agak lebar
+  },
+  dateCol: {
+    flex: 2, // Kolom Kanan agak lebar
+    alignItems: 'flex-end',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  statusValue: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.sm,
+  },
+  updatedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  chevronBox: {
+    marginLeft: 4,
+    marginTop: 1,
+  },
+  dateText: {
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.xs,
+  },
 
-  filterRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
-  filterLabel: { marginRight: 10 },
-  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  dropdownText: { marginRight: 5, fontSize: 14, fontWeight: '500' },
-  
-  dropdownMenu: { position: 'absolute', top: 155, left: 70, width: 200, borderRadius: 8, elevation: 5, zIndex: 10, padding: 5, borderWidth: 1 },
-  dropdownItem: { padding: 12, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between' },
+  // --- SEARCH & TAB STYLES (Tetap sama seperti sebelumnya) ---
+  searchBox: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    ...Shadow.md,
+  },
+  searchTitle: {
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize.lg,
+    color: '#FFF',
+    marginBottom: 5,
+  },
+  searchDesc: {
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.sm,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: Spacing.md,
+  },
+  inputContainer: { gap: Spacing.sm },
+  input: {
+    backgroundColor: '#FFF',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    height: hp(6),
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.md,
+    color: '#333',
+  },
+  searchBtn: {
+    backgroundColor: '#004BA0',
+    borderRadius: BorderRadius.md,
+    height: hp(6),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchBtnText: {
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize.md,
+    color: '#FFF',
+  },
+  resultTitle: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.md,
+    marginBottom: Spacing.sm,
+  },
+  emptyState: { alignItems: 'center', marginTop: Spacing.xl },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    marginTop: -hp(2),
+    marginBottom: Spacing.sm,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    ...Shadow.sm,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabText: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.md,
+  },
 });

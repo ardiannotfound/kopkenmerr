@@ -1,65 +1,121 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, StatusBar 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Share, 
+  StatusBar,
+  ActivityIndicator
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { 
-  widthPercentageToDP as wp, 
-  heightPercentageToDP as hp 
-} from 'react-native-responsive-screen';
-import { RFValue } from 'react-native-responsive-fontsize';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import { MOCK_ARTICLES } from '../../data/mockData';
-import { useTheme } from '../../context/ThemeContext_OLD';
+// --- IMPORTS SYSTEM BARU ---
 import CustomHeader from '../../components/CustomHeader';
+import { useTheme } from '../../hooks/useTheme';
+import { wp, hp, Spacing, BorderRadius } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- API ---
+import { kbApi } from '../../services/api/kb';
 
 export default function InformationDetailScreen() {
   const route = useRoute<any>();
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { colors, isDarkMode } = useTheme();
+  const navigation = useNavigation<any>();
   
+  // 1. Ambil Theme
+  const { colors, isDark } = useTheme();
+  
+  // Ambil ID dari params
   const { articleId } = route.params;
-  const article = MOCK_ARTICLES.find(a => a.id === articleId);
 
-  // Logic Share Button
+  // State Data
+  const [article, setArticle] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 2. Load Data (Simulasi API)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // UNCOMMENT JIKA API SUDAH READY:
+        // const response = await kbApi.getDetail(articleId);
+        // setArticle(response.data);
+
+        // MOCK DATA SEMENTARA (Agar tidak blank saat dijalankan)
+        setTimeout(() => {
+          setArticle({
+            id: articleId,
+            title: 'Cara Membuat Pengaduan Baru',
+            category: 'Panduan Pengguna',
+            date: '10 Des 2025',
+            content: `Untuk membuat pengaduan baru, ikuti langkah-langkah berikut:\n\n1. Buka halaman Beranda.\n2. Pilih menu "Lapor Insiden".\n3. Isi formulir dengan detail masalah yang Anda alami.\n4. Lampirkan foto bukti jika ada.\n5. Tekan tombol Kirim.\n\nTim kami akan segera memverifikasi laporan Anda.`
+          });
+          setLoading(false);
+        }, 500);
+
+      } catch (error) {
+        console.error(error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [articleId]);
+
+  // Logic Share
   const handleShare = async () => {
+    if (!article) return;
     try {
       await Share.share({
-        message: `${article?.title}\n\n${article?.content}`,
+        message: `${article.title}\n\n${article.content}`,
       });
     } catch (error) {
       console.log(error);
     }
   };
 
-  const goToNotifications = () => navigation.navigate('Notifications');
+  // Loading View
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background.primary, justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
-  if (!article) return (
-    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-      <Text style={{ color: colors.text }}>Artikel tidak ditemukan</Text>
-    </View>
-  );
-
-  // Warna Teks Dinamis
-  const titleColor = isDarkMode ? '#FFFFFF' : '#053F5C';
-  const bodyColor = isDarkMode ? '#CCCCCC' : '#053F5C'; 
+  // Not Found View
+  if (!article) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background.primary, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.text.secondary }}>Artikel tidak ditemukan</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={{ color: colors.primary }}>Kembali</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.container, { backgroundColor: colors.primary }]}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="transparent" 
+        translucent 
+      />
       
       {/* 1. HEADER */}
       <CustomHeader 
         type="page" 
-        title="Pusat Informasi" // Judul Header Tetap "Pusat Informasi"
+        title="Detail Informasi" 
         showNotificationButton={true} 
-        onNotificationPress={goToNotifications}
+        onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 2. KONTEN (Card Putih/Gelap Melengkung) */}
-      <View style={[styles.contentCard, { backgroundColor: colors.card }]}>
+      {/* 2. KONTEN (Card Melengkung) */}
+      <View style={[styles.contentCard, { backgroundColor: colors.background.card }]}>
         <ScrollView 
           showsVerticalScrollIndicator={false} 
           contentContainerStyle={{ paddingBottom: 50 }}
@@ -67,31 +123,40 @@ export default function InformationDetailScreen() {
           
           {/* JUDUL & SHARE ICON */}
           <View style={styles.titleRow}>
-            <Text style={[styles.articleTitle, { color: titleColor }]}>
+            <Text style={[styles.articleTitle, { color: colors.text.primary }]}>
               {article.title}
             </Text>
             <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-              <Ionicons name="share-social-outline" size={24} color={titleColor} />
+              <Ionicons 
+                name="share-social-outline" 
+                size={24} 
+                color={colors.primary} 
+              />
             </TouchableOpacity>
           </View>
 
-          {/* TANGGAL & KATEGORI (Opsional, kecil di bawah judul) */}
+          {/* META SECTION (Tanggal & Kategori) */}
           <View style={styles.metaRow}>
-            <Text style={styles.metaText}>03 Des 2025</Text>
-            <View style={styles.dot} />
-            <Text style={styles.metaText}>{article.category}</Text>
+            <Text style={[styles.metaText, { color: colors.text.tertiary }]}>
+              {article.date}
+            </Text>
+            <View style={[styles.dot, { backgroundColor: colors.text.tertiary }]} />
+            <Text style={[styles.metaText, { color: colors.text.tertiary }]}>
+              {article.category}
+            </Text>
           </View>
 
-          <View style={styles.divider} />
+          {/* Divider Tipis */}
+          <View style={[styles.divider, { backgroundColor: colors.border.light }]} />
 
           {/* ISI KONTEN */}
-          <Text style={[styles.articleBody, { color: bodyColor }]}>
+          <Text style={[styles.articleBody, { color: colors.text.secondary }]}>
             {article.content}
           </Text>
           
-          {/* Tambahan Dummy Text agar terlihat panjang */}
-          <Text style={[styles.articleBody, { color: bodyColor, marginTop: 10 }]}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+          {/* Dummy Text Tambahan (Biar kelihatan panjang scrollnya) */}
+          <Text style={[styles.articleBody, { color: colors.text.secondary, marginTop: 15 }]}>
+            Jika masalah berlanjut, Anda dapat menghubungi tim support kami melalui fitur Chat Helpdesk atau WhatsApp yang tersedia di halaman Pusat Informasi.
           </Text>
 
         </ScrollView>
@@ -104,13 +169,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  
+  // Card Putih Melengkung yang menimpa Header
   contentCard: {
     flex: 1,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: wp('6%'),
-    paddingTop: hp('4%'),
-    marginTop: -hp('2%'), // Overlap Header
+    borderTopLeftRadius: BorderRadius['2xl'], // 30
+    borderTopRightRadius: BorderRadius['2xl'],
+    paddingHorizontal: wp(6),
+    paddingTop: hp(4),
+    marginTop: -hp(2), // Efek Overlap
   },
 
   // TITLE SECTION
@@ -118,52 +185,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: hp('1%'),
+    marginBottom: hp(1),
   },
   articleTitle: {
-    flex: 1, // Agar teks tidak menabrak icon
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: RFValue(18),
+    flex: 1, 
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: FontSize.xl, // Scaled 20
     textAlign: 'left',
-    lineHeight: RFValue(26),
+    lineHeight: 28,
     marginRight: 10,
   },
   shareButton: {
     padding: 5,
-    marginTop: -2, // Align optical dengan huruf kapital pertama
+    marginTop: -2, 
   },
 
-  // META SECTION (Date/Category)
+  // META SECTION
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: hp('2%'),
+    marginBottom: hp(2),
   },
   metaText: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: RFValue(10),
-    color: '#999',
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.xs,
   },
   dot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#999',
     marginHorizontal: 8,
+    opacity: 0.5
   },
 
   divider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
-    marginBottom: hp('3%'),
-    opacity: 0.5,
+    marginBottom: hp(3),
+    opacity: 0.6,
   },
 
-  // BODY
+  // BODY TEXT
   articleBody: {
-    fontFamily: 'Poppins_400Regular', // Poppins Regular sesuai request
-    fontSize: RFValue(14),
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.sm, // Scaled 14/15
     textAlign: 'left',
-    lineHeight: RFValue(24), // Line height agar nyaman dibaca
+    lineHeight: 26, // Jarak antar baris nyaman dibaca
   },
 });
