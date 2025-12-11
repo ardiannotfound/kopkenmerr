@@ -1,28 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  RefreshControl,
-  StatusBar
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl,StatusBar} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-
-// --- IMPORTS SYSTEM BARU ---
 import CustomHeader from '../../components/CustomHeader';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/authStore';
 import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontFamily, FontSize } from '../../styles/typography';
-
-// --- IMPORTS ICONS SVG ---
 import PengaduanIcon from '../../../assets/icons/pengaduan.svg';
 import PermintaanIcon from '../../../assets/icons/permintaan.svg';
 import FAQIcon from '../../../assets/icons/faq.svg';
-
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   
@@ -50,17 +37,15 @@ export default function HomeScreen() {
   const getGridStyles = () => {
     if (isDark) {
       return {
-        // Dark Mode: Icon Putih, Background Abu Transparan
         iconColor: '#FFFFFF',
         bgPengaduan: 'rgba(255, 255, 255, 0.1)',
         bgPermintaan: 'rgba(255, 255, 255, 0.1)',
       };
     } else {
       return {
-        // Light Mode: Icon Biru Gelap (Primary), Background Biru/Cyan Muda Cerah
         iconColor: colors.primary, 
-        bgPengaduan: '#E3F2FD', // Biru Muda banget
-        bgPermintaan: '#E0F7FA', // Cyan Muda banget
+        bgPengaduan: '#E3F2FD',
+        bgPermintaan: '#E0F7FA',
       };
     }
   };
