@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Alert 
 } from 'react-native';
@@ -25,6 +25,10 @@ export default function TicketDetailScreen() {
   
   const { ticketId } = route.params;
   const ticket = MOCK_TICKETS.find(t => t.id === ticketId);
+
+  // --- LOGIC WARNA RESPONSIVE ---
+  // Jika Dark Mode -> Putih, Jika Light Mode -> Biru Primary
+  const headerColor = isDark ? colors.text.primary : colors.primary;
 
   // Dummy History Data
   const ticketHistory = [
@@ -76,6 +80,7 @@ export default function TicketDetailScreen() {
     <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
+      {/* 1. HEADER */}
       <CustomHeader 
         type="page" 
         title="Detail Tiket" 
@@ -87,7 +92,7 @@ export default function TicketDetailScreen() {
         
         {/* 2. TOP INFO SECTION */}
         <View style={styles.topInfoContainer}>
-          {/* PERBAIKAN: Align Flex Start (Kiri Atas) */}
+          {/* Tipe & Nomor */}
           <View style={{ alignItems: 'flex-start', marginBottom: Spacing.sm }}>
             <Text style={[styles.typeText, { 
               color: ticket.type === 'incident' ? '#FF9500' : '#337CAD' 
@@ -97,8 +102,8 @@ export default function TicketDetailScreen() {
             </Text>
           </View>
 
-          {/* Judul Tiket */}
-          <Text style={[styles.ticketTitle, { color: colors.primary }]}>
+          {/* Judul Tiket (Warna Responsive) */}
+          <Text style={[styles.ticketTitle, { color: headerColor }]}>
             {ticket.title}
           </Text>
         </View>
@@ -107,7 +112,7 @@ export default function TicketDetailScreen() {
         <View style={[styles.card, { backgroundColor: colors.background.card }]}>
           
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: colors.primary, fontFamily: FontFamily.poppins.semibold }]}>
+            <Text style={[styles.infoLabel, { color: headerColor, fontFamily: FontFamily.poppins.semibold }]}>
               Status Terkini
             </Text>
             <View style={styles.statusBadge}>
@@ -118,24 +123,24 @@ export default function TicketDetailScreen() {
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: colors.primary }]}>Dibuat :</Text>
+            <Text style={[styles.infoLabel, { color: headerColor }]}>Dibuat :</Text>
             <Text style={[styles.infoValue, { color: colors.text.primary }]}>24 Okt 2025</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: colors.primary }]}>Pemohon :</Text>
+            <Text style={[styles.infoLabel, { color: headerColor }]}>Pemohon :</Text>
             <Text style={[styles.infoValue, { color: colors.text.primary }]}>Darren Ardianto</Text>
           </View>
 
           <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-            <Text style={[styles.infoLabel, { color: colors.primary }]}>Email Pemohon :</Text>
+            <Text style={[styles.infoLabel, { color: headerColor }]}>Email Pemohon :</Text>
             <Text style={[styles.infoValue, { color: colors.text.primary }]}>ardiantodarren@gmail.com</Text>
           </View>
 
         </View>
 
         {/* 4. RIWAYAT STATUS */}
-        <Text style={[styles.sectionHeader, { color: colors.primary }]}>
+        <Text style={[styles.sectionHeader, { color: headerColor }]}>
           Riwayat Status
         </Text>
 
@@ -163,7 +168,7 @@ export default function TicketDetailScreen() {
         </View>
 
         {/* 5. DESKRIPSI */}
-        <Text style={[styles.sectionHeader, { color: colors.primary, marginTop: Spacing.lg }]}>
+        <Text style={[styles.sectionHeader, { color: headerColor, marginTop: Spacing.lg }]}>
           Deskripsi
         </Text>
         <View style={[styles.descCard, { backgroundColor: colors.background.card }]}>
@@ -217,7 +222,7 @@ const styles = StyleSheet.create({
   ticketTitle: {
     fontFamily: FontFamily.poppins.semibold,
     fontSize: FontSize.lg,
-    textAlign: 'center', // Tetap center biar rapi
+    textAlign: 'center',
     marginBottom: Spacing.sm,
   },
 
@@ -281,23 +286,21 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
     flexDirection: 'row',
-    gap: Spacing.md, // Jarak antar tombol
+    gap: Spacing.md,
   },
-  
-  // GAYA TOMBOL UNIVERSAL (Responsive Width)
   btnAction: {
-    flex: 1, // Agar kedua tombol membagi rata lebar layar
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: BorderRadius.lg,
-    paddingHorizontal: 5, // Biar teks gak mepet pinggir tombol
+    paddingHorizontal: 5,
   },
   btnTextWhite: {
     fontFamily: FontFamily.poppins.semibold,
     color: '#FFF',
-    fontSize: FontSize.sm, // Sedikit dikecilkan agar muat
-    flexShrink: 1, // Agar teks tidak overflow
+    fontSize: FontSize.sm,
+    flexShrink: 1,
   },
 });

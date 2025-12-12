@@ -1,19 +1,17 @@
-// src/store/authStore.ts
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ✅ 1. Interface Auth User (Hanya untuk Pegawai & Teknisi)
-export interface Role {
-  id: string;   
-  name: string; 
+// --- 1. DEFINISI TIPE SESUAI JSON BACKEND ---
+
+// OPD Object (Sesuai response JSON)
+export interface Opd {
+  id: number;
+  code: string;
+  name: string;
 }
 
-export interface Permission {
-  action: string;
-  subject: string;
-}
-
+// User Object (Update sesuai response GET /me)
 export interface User {
   id: number;
   username: string;
@@ -22,15 +20,22 @@ export interface User {
   nip: string;
   phone: string;
   address: string;
-  role: Role;
-  opd_id: number;
-  permissions: Permission[];
-  avatar_url?: string; 
+  role: string; // Backend mengembalikan string "pegawai_opd", bukan object
+  avatar_url?: string;
+  created_at?: string;
+  
+  // Relasi
+  opd?: Opd | null; // Bisa null jika masyarakat
+  bidang?: any;     // Sesuaikan jika nanti ada datanya
+  seksi?: any;
+  
+  // Permissions (Opsional, jika backend belum kirim, bikin optional dulu)
+  permissions?: string[]; 
 }
 
 interface AuthState {
   token: string | null;
-  user: User | null; // User bisa NULL jika dia Guest
+  user: User | null;
   isAuthenticated: boolean;
   isGuest: boolean;
   
@@ -38,12 +43,13 @@ interface AuthState {
   login: (token: string, user: User) => void;
   loginAsGuest: () => void;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
+  
+  // Update Partial Data (Ganti nama jadi updateUserData biar konsisten)
+  updateUserData: (userData: Partial<User>) => void;
   
   // Helpers
   userRole: () => string;
-  getUserName: () => string; // Helper baru buat Header
-  checkPermission: (action: string, subject: string) => boolean;
+  getUserName: () => string;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -54,22 +60,23 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isGuest: false,
 
-      // --- LOGIN PEGAWAI / TEKNISI ---
+      // --- LOGIN ---
       login: (token, user) => set({ 
         token, 
         user, 
-        isAuthenticated: true, // Punya Token
+        isAuthenticated: true, 
         isGuest: false 
       }),
 
-      // --- MASUK SEBAGAI TAMU ---
+      // --- GUEST ---
       loginAsGuest: () => set({ 
-        token: null, // TIDAK ADA TOKEN
-        user: null,  // TIDAK ADA DATA USER (ID, NIP, dll)
+        token: null, 
+        user: null, 
         isAuthenticated: false,
         isGuest: true 
       }),
 
+      // --- LOGOUT ---
       logout: () => set({ 
         token: null, 
         user: null, 
@@ -77,35 +84,25 @@ export const useAuthStore = create<AuthState>()(
         isGuest: false,
       }),
 
-      updateUser: (userData) => set((state) => ({
-        user: state.user ? { ...state.user, ...userData } : null
+      // --- UPDATE DATA USER ---
+      // Fungsi ini menggabungkan data lama dengan data baru
+      updateUserData: (updatedFields) => set((state) => ({
+        user: state.user ? { ...state.user, ...updatedFields } : null
       })),
 
       // --- HELPERS ---
-
-      // Helper Role
       userRole: () => {
         const { user, isGuest } = get();
-        if (isGuest) return 'masyarakat'; // Hardcode string 'masyarakat'
-        if (!user) return 'masyarakat';   // Fallback
-        return user.role?.id || 'masyarakat';
+        if (isGuest) return 'masyarakat';
+        // Karena di backend role adalah string "pegawai_opd"
+        return user?.role || 'masyarakat';
       },
 
-      // Helper Nama untuk Tampilan UI/Header
       getUserName: () => {
         const { user, isGuest } = get();
         if (isGuest) return 'Tamu Masyarakat';
-        return user?.full_name || 'Pengguna';
+        return user?.full_name || user?.username || 'Pengguna';
       },
-
-      // Helper Permission (Hanya jalan kalau bukan guest)
-      checkPermission: (action, subject) => {
-        const { user } = get();
-        if (!user) return false; // Guest gapunya permission
-        return user.permissions.some(
-          p => p.action === action && p.subject === subject
-        );
-      }
     }),
     {
       name: 'auth-storage',

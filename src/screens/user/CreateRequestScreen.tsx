@@ -128,8 +128,7 @@ export default function CreateRequestScreen() {
       >
         <ScrollView 
           showsVerticalScrollIndicator={false} 
-          // ✅ PERBAIKAN: Hapus paddingBottom custom yang besar
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 20 }}
+          contentContainerStyle={{ flexGrow: 1}}
         >
           
           {/* CARD KONTEN */}

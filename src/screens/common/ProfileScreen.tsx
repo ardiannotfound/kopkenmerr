@@ -48,8 +48,8 @@ export default function ProfileScreen() {
   const displayName = user?.full_name || 'Pengguna';
   
   const getRoleLabel = () => {
-    if (role === 'teknisi') return 'Teknisi IT';
-    if (role === 'pegawai_opd') return 'Pegawai Pemerintah';
+    if (role === 'teknisi') return 'Teknisi';
+    if (role === 'pegawai_opd') return 'Pegawai';
     return 'Pengguna';
   };
 
