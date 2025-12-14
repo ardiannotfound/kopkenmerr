@@ -1,37 +1,110 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_TICKETS } from '../../data/mockData';
-import { CurrentUser } from '../../data/Session';
+
+// --- IMPORTS SYSTEM ---
+import CustomHeader from '../../components/CustomHeader'; // Gunakan header standar
+import { useTheme } from '../../hooks/useTheme';
+import { useAuthStore } from '../../store/authStore';
+import { incidentApi } from '../../services/api/incidents';
+import { requestApi } from '../../services/api/requests';
+
+// --- STYLES ---
+import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
+import { FontFamily, FontSize } from '../../styles/typography';
+
+// Tipe Lokal
+interface TaskItem {
+  id: number | string;
+  ticketNumber: string;
+  title: string;
+  status: string;
+  opdName: string;
+  type: 'incident' | 'request';
+}
 
 export default function TechnicianTaskScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const techId = CurrentUser.userId;
-
-  // Filter States
+  const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
+  
+  // Ambil state filter
   const [activeType, setActiveType] = useState<'incident' | 'request'>('incident');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
-  // FILTER LOGIC
-  const getTasks = () => {
-    let data = MOCK_TICKETS.filter(t => t.technicianId === techId);
+  // State Data
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [taskList, setTaskList] = useState<TaskItem[]>([]);
 
-    // 1. Filter Type
-    data = data.filter(t => t.type === activeType);
+  // --- FETCH DATA ---
+  const loadTasks = useCallback(async () => {
+    setLoading(true);
+    try {
+      let dataRaw: any[] = [];
+      
+      // 1. Ambil data sesuai Tab Active
+      if (activeType === 'incident') {
+        dataRaw = await incidentApi.getAll();
+      } else {
+        dataRaw = await requestApi.getAll();
+      }
 
-    // 2. Search (Judul atau No Tiket)
+      // 2. Format Data
+      const formatted: TaskItem[] = (dataRaw || []).map((item: any) => ({
+        id: item.id,
+        ticketNumber: item.ticket_number,
+        title: item.title,
+        status: item.status,
+        opdName: item.opd?.name || 'Umum',
+        type: activeType,
+      }));
+
+      // 3. Filter Logic (Client Side)
+      // Teknisi biasanya hanya melihat tiket yang assigned, in_progress, dsb.
+      // Sesuaikan filter ini dengan kebutuhan bisnis Anda.
+      const myTasks = formatted.filter(t => {
+        const s = t.status.toLowerCase();
+        return s !== 'new' && s !== 'open'; // Contoh: Teknisi tidak lihat tiket 'new' yang belum diapprove
+      });
+
+      setTaskList(myTasks);
+
+    } catch (error) {
+      console.error("Gagal load task teknisi:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [activeType]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadTasks();
+  };
+
+  // --- FILTER CLIENT SIDE ---
+  const getFilteredTasks = () => {
+    let data = taskList;
+
+    // 1. Search
     if (searchQuery) {
+      const q = searchQuery.toLowerCase();
       data = data.filter(t => 
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        t.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase())
+        t.title.toLowerCase().includes(q) || 
+        t.ticketNumber.toLowerCase().includes(q)
       );
     }
 
-    // 3. Status Dropdown
+    // 2. Status Dropdown
     if (statusFilter !== 'All') {
       data = data.filter(t => t.status === statusFilter);
     }
@@ -40,124 +113,153 @@ export default function TechnicianTaskScreen() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ready': return '#2196f3';
+    const s = status?.toLowerCase() || '';
+    switch (s) {
+      case 'assigned': return '#2196f3';
       case 'in_progress': return '#4caf50';
-      case 'waiting_seksi': return '#9c27b0';
+      case 'waiting': return '#9c27b0';
+      case 'resolved': return '#4FEA17';
       default: return '#757575';
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
+  // --- RENDER ITEM ---
+  const renderItem = ({ item }: { item: TaskItem }) => (
+    <View style={[styles.card, { backgroundColor: colors.background.card }]}>
       <View style={styles.cardHeader}>
-        <Text style={styles.ticketId}>{item.ticketNumber}</Text>
+        <Text style={[styles.ticketId, { color: colors.text.secondary }]}>{item.ticketNumber}</Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{item.status.replace('_', ' ').toUpperCase()}</Text>
         </View>
       </View>
       
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.opd}>🏢 {item.opd}</Text>
+      <Text style={[styles.title, { color: colors.text.primary }]}>{item.title}</Text>
+      <Text style={[styles.opd, { color: colors.text.secondary }]}>🏢 {item.opdName}</Text>
 
       <TouchableOpacity 
         style={styles.detailButton}
-        onPress={() => navigation.navigate('TicketDetail', { ticketId: item.id })}
+        // Arahkan ke detail yang benar
+        onPress={() => {
+           if(item.type === 'incident') navigation.navigate('TicketDetail', { ticketId: item.id });
+           else navigation.navigate('DetailRequest', { ticketId: item.id }); // Sesuaikan nama screen request
+        }}
       >
-        <Text style={styles.detailText}>Lihat Detail</Text>
+        <Text style={styles.detailText}>Kerjakan / Detail</Text>
         <Ionicons name="arrow-forward" size={16} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pengerjaan Tiket</Text>
+    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
+      <CustomHeader 
+        type="page" 
+        title="Daftar Tugas"
+        showNotificationButton={true}
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
+
+      {/* 1. TABS */}
+      <View style={[styles.tabs, { backgroundColor: colors.background.card }]}>
+        <TouchableOpacity 
+          style={[styles.tabBtn, activeType==='incident' && { borderBottomColor: colors.primary }]} 
+          onPress={() => setActiveType('incident')}
+        >
+          <Text style={[styles.tabText, activeType==='incident' && { color: colors.primary }]}>Pengaduan</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabBtn, activeType==='request' && { borderBottomColor: colors.primary }]} 
+          onPress={() => setActiveType('request')}
+        >
+          <Text style={[styles.tabText, activeType==='request' && { color: colors.primary }]}>Permintaan</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* 1. TABS PENGADUAN / PERMINTAAN */}
-      <View style={styles.tabs}>
-        <TouchableOpacity style={[styles.tabBtn, activeType==='incident' && styles.tabActive]} onPress={() => setActiveType('incident')}>
-          <Text style={[styles.tabText, activeType==='incident' && styles.tabTextActive]}>Pengaduan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tabBtn, activeType==='request' && styles.tabActive]} onPress={() => setActiveType('request')}>
-          <Text style={[styles.tabText, activeType==='request' && styles.tabTextActive]}>Permintaan</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. SEARCH & DROPDOWN */}
+      {/* 2. SEARCH & FILTER */}
       <View style={styles.filterContainer}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={18} color="#999" />
+        <View style={[styles.searchBox, { backgroundColor: colors.background.card }]}>
+          <Ionicons name="search" size={18} color={colors.text.secondary} />
           <TextInput 
-            style={styles.input} 
+            style={[styles.input, { color: colors.text.primary }]} 
             placeholder="Cari Judul / ID..." 
+            placeholderTextColor={colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
         </View>
         
-        {/* Dropdown Trigger */}
-        <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setShowStatusDropdown(!showStatusDropdown)}>
-          <Ionicons name="filter" size={18} color="#333" />
+        <TouchableOpacity 
+          style={[styles.dropdownTrigger, { backgroundColor: colors.background.card }]} 
+          onPress={() => setShowStatusDropdown(!showStatusDropdown)}
+        >
+          <Ionicons name="filter" size={18} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Dropdown Content */}
+      {/* DROPDOWN MENU */}
       {showStatusDropdown && (
-        <View style={styles.dropdownMenu}>
-          {['All', 'ready', 'in_progress', 'waiting_seksi', 'resolved'].map(status => (
-            <TouchableOpacity key={status} style={styles.dropdownItem} onPress={() => { setStatusFilter(status); setShowStatusDropdown(false); }}>
-              <Text>{status === 'All' ? 'Semua Status' : status.replace('_', ' ').toUpperCase()}</Text>
-              {statusFilter === status && <Ionicons name="checkmark" size={16} color="blue" />}
+        <View style={[styles.dropdownMenu, { backgroundColor: colors.background.card }]}>
+          {['All', 'assigned', 'in_progress', 'resolved'].map(status => (
+            <TouchableOpacity 
+              key={status} 
+              style={[styles.dropdownItem, { borderBottomColor: colors.border.light }]} 
+              onPress={() => { setStatusFilter(status); setShowStatusDropdown(false); }}
+            >
+              <Text style={{ color: colors.text.primary }}>
+                {status === 'All' ? 'Semua Status' : status.replace('_', ' ').toUpperCase()}
+              </Text>
+              {statusFilter === status && <Ionicons name="checkmark" size={16} color={colors.primary} />}
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      <FlatList
-        data={getTasks()}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={{alignItems:'center', marginTop: 50}}>
-            <Text style={{color: '#999'}}>Tidak ada tiket ditemukan.</Text>
-          </View>
-        }
-      />
+      {/* LIST */}
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList
+          data={getFilteredTasks()}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={{alignItems:'center', marginTop: 50}}>
+              <Text style={{color: colors.text.secondary}}>Tidak ada tugas saat ini.</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { backgroundColor: '#fff', padding: 20, paddingTop: 50 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#333' },
-
-  tabs: { flexDirection: 'row', backgroundColor: '#fff', paddingHorizontal: 20 },
+  container: { flex: 1 },
+  
+  tabs: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10 },
   tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#007AFF' },
   tabText: { color: '#888', fontWeight: '600' },
-  tabTextActive: { color: '#007AFF' },
 
-  filterContainer: { flexDirection: 'row', padding: 15, alignItems: 'center', gap: 10 },
-  searchBox: { flex: 1, flexDirection: 'row', backgroundColor: '#fff', padding: 10, borderRadius: 8, alignItems: 'center', elevation: 1 },
+  filterContainer: { flexDirection: 'row', paddingHorizontal: 15, marginBottom: 10, alignItems: 'center', gap: 10 },
+  searchBox: { flex: 1, flexDirection: 'row', padding: 10, borderRadius: 8, alignItems: 'center', ...Shadow.sm },
   input: { flex: 1, marginLeft: 10 },
-  dropdownTrigger: { backgroundColor: '#fff', padding: 12, borderRadius: 8, elevation: 1 },
+  dropdownTrigger: { padding: 12, borderRadius: 8, ...Shadow.sm },
 
-  dropdownMenu: { position: 'absolute', top: 125, right: 20, width: 200, backgroundColor: '#fff', borderRadius: 8, elevation: 5, zIndex: 10, padding: 5 },
-  dropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', justifyContent: 'space-between' },
+  dropdownMenu: { position: 'absolute', top: 120, right: 20, width: 200, borderRadius: 8, ...Shadow.md, zIndex: 10, padding: 5 },
+  dropdownItem: { padding: 12, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between' },
 
   listContent: { padding: 15 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
+  card: { borderRadius: 12, padding: 15, marginBottom: 15, ...Shadow.sm },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  ticketId: { fontWeight: 'bold', color: '#555' },
+  ticketId: { fontWeight: 'bold' },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   statusText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  title: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 5 },
-  opd: { fontSize: 12, color: '#666', marginBottom: 15 },
+  title: { fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
+  opd: { fontSize: 12, marginBottom: 15 },
   detailButton: { backgroundColor: '#007AFF', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 8 },
   detailText: { color: '#fff', fontWeight: 'bold', marginRight: 5 },
 });

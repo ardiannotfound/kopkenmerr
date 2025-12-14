@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { WORKING_HOURS, MOCK_HOLIDAYS } from '../../data/mockData';
+
+// --- INTERNAL MOCK DATA (Karena belum ada API) ---
+const WORKING_HOURS = [
+  { day: 'Senin', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Selasa', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Rabu', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Kamis', open: '08:00', close: '16:00', isOpen: true },
+  { day: 'Jumat', open: '08:00', close: '15:00', isOpen: true },
+  { day: 'Sabtu', open: '-', close: '-', isOpen: false },
+  { day: 'Minggu', open: '-', close: '-', isOpen: false },
+];
+
+const MOCK_HOLIDAYS = [
+  { date: '2025-12-25', name: 'Hari Raya Natal', isNational: true },
+  { date: '2025-12-26', name: 'Cuti Bersama Natal', isNational: false },
+];
 
 export default function TechnicianScheduleScreen() {
   const [activeTab, setActiveTab] = useState<'calendar' | 'hours' | 'upcoming'>('calendar');
@@ -12,7 +27,6 @@ export default function TechnicianScheduleScreen() {
   const startDayOffset = 1; // 1 = Senin
   
   // SIMULASI "HARI INI" (Misal hari ini tanggal 4)
-  // Di aplikasi real, ganti angka 4 dengan: new Date().getDate()
   const todayDate = 4; 
 
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -42,7 +56,6 @@ export default function TechnicianScheduleScreen() {
   };
 
   // --- RENDER SECTIONS ---
-
   const renderCalendar = () => (
     <View style={styles.card}>
       <View style={styles.calHeader}>
@@ -68,16 +81,16 @@ export default function TechnicianScheduleScreen() {
           const status = getDayStatus(day);
           const isHoliday = status.type === 'holiday';
           const isWeekend = status.type === 'weekend';
-          const isToday = day === todayDate; // Cek apakah ini hari ini
+          const isToday = day === todayDate; 
           
           return (
             <TouchableOpacity 
               key={day} 
-              onPress={() => handleDatePress(day, status)} // AGAR BISA DIPENCET
+              onPress={() => handleDatePress(day, status)}
               style={[
                 styles.dayCell, 
                 isHoliday ? styles.bgHoliday : isWeekend ? styles.bgWeekend : styles.bgWork,
-                isToday && styles.todayBorder // Outline Hitam untuk Hari Ini
+                isToday && styles.todayBorder 
               ]}
             >
               <Text style={[
@@ -147,7 +160,7 @@ export default function TechnicianScheduleScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Jadwal & Kalender</Text>
         <Text style={styles.headerSub}>Pengaturan waktu operasional teknisi</Text>
@@ -200,11 +213,10 @@ const styles = StyleSheet.create({
   dayLabel: { width: '13%', textAlign: 'center', fontSize: 12, color: '#999', fontWeight: 'bold' },
   daysGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' },
   
-  // STYLE CELL KALENDER
   dayCell: { 
-    width: '13.5%', // Sedikit lebih lebar biar pas
-    height: 60,     // Tinggi fix biar muat text libur
-    justifyContent: 'flex-start', // Text mulai dari atas
+    width: '13.5%', 
+    height: 60,     
+    justifyContent: 'flex-start',
     alignItems: 'center', 
     margin: '0.3%', 
     borderRadius: 6,
@@ -214,16 +226,13 @@ const styles = StyleSheet.create({
   bgWeekend: { backgroundColor: '#ffebee' },
   bgHoliday: { backgroundColor: '#ffcdd2' },
   
-  // STYLE HARI INI (OUTLINE HITAM)
   todayBorder: {
     borderWidth: 2,
     borderColor: '#333',
-    backgroundColor: '#fff', // Opsional: warnanya jadi putih biar kontras
+    backgroundColor: '#fff',
   },
 
   dateText: { fontSize: 14, color: '#333', marginBottom: 2 },
-  
-  // STYLE TEXT LIBUR KECIL
   holidayLabel: {
     fontSize: 8, 
     color: '#d32f2f', 

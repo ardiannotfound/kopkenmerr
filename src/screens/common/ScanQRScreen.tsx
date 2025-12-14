@@ -5,15 +5,21 @@ import * as Location from 'expo-location';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { CurrentUser } from '../../data/Session';
-import { MOCK_TICKETS } from '../../data/mockData';
+
+import { useAuthStore } from '../../store/authStore';
+
+// MOCK TIKET TEKNISI
+const MOCK_ACTIVE_TICKETS = [
+  { id: 101, ticketNumber: 'INC-2025-001', technicianId: 3, status: 'assigned', assetName: 'Router' },
+  { id: 102, ticketNumber: 'INC-2025-002', technicianId: 3, status: 'in_progress', assetName: 'Server' }
+];
 
 export default function ScanQRScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const isFocused = useIsFocused();
   
-  const userRole = CurrentUser.role;
-  const userId = CurrentUser.userId;
+  const { user, userRole, isGuest } = useAuthStore();
+  const role = isGuest ? 'guest' : userRole(); 
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
@@ -35,7 +41,7 @@ export default function ScanQRScreen() {
   const getCurrentLocation = async () => {
     try {
       setLoadingLocation(true);
-      let location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       setLoadingLocation(false);
       return `${location.coords.latitude}, ${location.coords.longitude}`;
     } catch (error) {
@@ -46,23 +52,28 @@ export default function ScanQRScreen() {
   };
 
   const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
+    if (scanned) return;
     setScanned(true);
     setTorchEnabled(false);
     
-    // === LOGIKA 1: MASYARAKAT / PEGAWAI ===
-    if (userRole === 'guest' || userRole === 'employee') {
+    console.log(`📡 Scanned: ${data}, Role: ${role}`);
+
+    // ============================================================
+    // 1️⃣ LOGIKA: MASYARAKAT / GUEST (Harus Isi Data Diri Dulu)
+    // ============================================================
+    if (role === 'guest' || role === 'masyarakat') {
       Alert.alert(
         "Aset Terdeteksi",
-        `ID Aset: ${data}\nLaporkan masalah pada aset ini?`,
+        `ID: ${data}\nSilakan isi data diri Anda untuk melaporkan.`,
         [
           { text: "Batal", onPress: () => setScanned(false), style: "cancel" },
           { 
-            text: "Ya, Lapor", 
+            text: "Lanjut Isi Data", 
             onPress: () => {
-              // --- PERBAIKAN DISINI ---
-              // Ganti 'CreateTicket' menjadi 'CreateIncident'
-              navigation.navigate('CreateIncident', {
-                type: 'incident', userRole, userId, assetId: data, isQrScan: true
+              // ✅ KE STEP 1 (CreateIncident) bawa params aset
+              navigation.replace('CreateIncident', {
+                assetId: data, 
+                isQrScan: true
               });
             }
           }
@@ -70,58 +81,71 @@ export default function ScanQRScreen() {
       );
     } 
     
-    // === LOGIKA 2: TEKNISI (CHECK-IN GPS) ===
-    else if (userRole === 'technician') {
-      const matchedTicket = MOCK_TICKETS.find(t => 
-        t.technicianId === userId && 
-        ['ready', 'in_progress', 'waiting_seksi'].includes(t.status) &&
-        (t.assetName?.toUpperCase().includes(data.toUpperCase()) || data.toUpperCase().includes("ROUTER"))
+    // ============================================================
+    // 2️⃣ LOGIKA: PEGAWAI OPD (Langsung ke Detail)
+    // ============================================================
+    else if (role === 'pegawai_opd') {
+      Alert.alert(
+        "Aset Terdeteksi",
+        `ID: ${data}\nLaporkan kerusakan aset ini?`,
+        [
+          { text: "Batal", onPress: () => setScanned(false), style: "cancel" },
+          { 
+            text: "Ya, Lapor", 
+            onPress: () => {
+              // ✅ LANGSUNG KE STEP 2 (DetailIncident) karena data diri sudah ada
+              navigation.replace('DetailIncident', {
+                userData: user, // Bawa data user login
+                assetId: data, 
+                isQrScan: true
+              });
+            }
+          }
+        ]
+      );
+    }
+
+    // ============================================================
+    // 3️⃣ LOGIKA: TEKNISI (Maintenance / Check-In)
+    // ============================================================
+    else if (role === 'teknisi') {
+      const matchedTicket = MOCK_ACTIVE_TICKETS.find(t => 
+        (data.toUpperCase().includes(t.assetName.toUpperCase()) || t.assetName.toUpperCase().includes(data.toUpperCase()))
       );
 
       if (matchedTicket) {
         const realCoords = await getCurrentLocation();
-
         if (realCoords) {
-          const timestamp = new Date().toLocaleString();
-          
           Alert.alert(
             "✅ Validasi Lokasi Sukses!",
-            `Tiket Ditemukan: ${matchedTicket.ticketNumber}\nTarget: ${matchedTicket.assetName}\nWaktu: ${timestamp}\n📍 GPS: ${realCoords}`,
+            `Tiket: ${matchedTicket.ticketNumber}\nGPS: ${realCoords}`,
             [
-              { 
-                text: "Check-In & Mulai", 
-                onPress: () => {
-                  navigation.navigate('TicketDetail', { ticketId: matchedTicket.id });
-                }
-              }
+              { text: "Mulai Kerja", onPress: () => navigation.navigate('TicketDetail', { ticketId: matchedTicket.id }) }
             ]
           );
         } else {
            setScanned(false);
         }
-
       } else {
         Alert.alert(
           "Info Aset",
-          `Tidak ada tugas aktif untuk aset ini (${data}).\nLihat riwayat aset?`,
+          `Aset ID: ${data}\nTidak ada tugas aktif. Lihat riwayat?`,
           [
             { text: "Scan Lagi", onPress: () => setScanned(false), style: "cancel" },
-            { 
-              text: "Lihat Info", 
-              onPress: () => navigation.navigate('AssetHistory', { assetId: data }) 
-            }
+            { text: "Lihat Info", onPress: () => navigation.navigate('AssetHistory', { assetId: data }) }
           ]
         );
       }
     }
   };
 
+  // Helper Simulator
   const handleSimulateScan = () => {
-    handleBarCodeScanned({ type: 'qr', data: 'Router' }); 
+    handleBarCodeScanned({ type: 'qr', data: 'PRINTER-001' }); 
   };
 
-  if (hasPermission === null) return <View style={styles.container}><Text>Meminta izin sistem...</Text></View>;
-  if (hasPermission === false) return <View style={styles.container}><Text>Akses Kamera/Lokasi Ditolak.</Text></View>;
+  if (hasPermission === null) return <View style={styles.container}><Text style={{color:'#fff'}}>Meminta izin...</Text></View>;
+  if (hasPermission === false) return <View style={styles.container}><Text style={{color:'#fff'}}>Akses Kamera Ditolak.</Text></View>;
 
   return (
     <View style={styles.container}>
@@ -137,7 +161,7 @@ export default function ScanQRScreen() {
       {loadingLocation && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={{color:'#fff', marginTop: 10}}>Mengambil Koordinat GPS...</Text>
+          <Text style={{color:'#fff', marginTop: 10}}>Validasi Lokasi...</Text>
         </View>
       )}
 
@@ -148,13 +172,9 @@ export default function ScanQRScreen() {
             <View style={styles.cornerBL} /><View style={styles.cornerBR} />
         </View>
         <Text style={styles.instructions}>Arahkan kamera ke QR Code Aset</Text>
-        
-        <TouchableOpacity 
-          style={[styles.flashButton, torchEnabled && styles.flashButtonActive]} 
-          onPress={() => setTorchEnabled(!torchEnabled)}
-        >
+        <TouchableOpacity style={[styles.flashButton, torchEnabled && styles.flashButtonActive]} onPress={() => setTorchEnabled(!torchEnabled)}>
             <Ionicons name={torchEnabled ? "flash" : "flash-off"} size={24} color={torchEnabled ? "#000" : "#fff"} />
-            <Text style={[styles.flashText, torchEnabled && {color: '#000'}]}>{torchEnabled ? "Matikan Flash" : "Nyalakan Flash"}</Text>
+            <Text style={[styles.flashText, torchEnabled && {color: '#000'}]}>Flash</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,7 +183,7 @@ export default function ScanQRScreen() {
       </TouchableOpacity>
 
       <View style={{ position: 'absolute', bottom: 40, alignSelf: 'center' }}>
-        <Button title="[DEV] Simulasi Scan Benar" onPress={handleSimulateScan} color="#28a745" />
+        <Button title="[DEV] Simulasi Scan" onPress={handleSimulateScan} color="#28a745" />
       </View>
     </View>
   );

@@ -13,7 +13,7 @@ import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontFamily, FontSize } from '../../styles/typography';
 
 // --- API & DATA ---
-import { kbApi } from '../../services/api/kb';
+import { kbApi } from '../../services/api/knowledgebase';
 
 export default function InformationScreen() {
   const navigation = useNavigation<any>();

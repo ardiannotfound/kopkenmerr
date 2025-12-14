@@ -1,39 +1,112 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl,StatusBar} from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  RefreshControl,
+  StatusBar,
+  ActivityIndicator
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+
+// --- IMPORTS ---
 import CustomHeader from '../../components/CustomHeader';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/authStore';
+import { incidentApi } from '../../services/api/incidents'; // ✅ API BARU
+import { requestApi } from '../../services/api/requests';   // ✅ API BARU
+
+// --- STYLES ---
 import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontFamily, FontSize } from '../../styles/typography';
+
+// --- ICONS (SVG) ---
 import PengaduanIcon from '../../../assets/icons/pengaduan.svg';
 import PermintaanIcon from '../../../assets/icons/permintaan.svg';
 import FAQIcon from '../../../assets/icons/faq.svg';
+
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   
   // 1. Hook Theme & Auth
   const { colors, isDark } = useTheme();
-  const { user, isGuest, getUserName, logout } = useAuthStore();
+  // Ambil helper userOpdName dari store baru
+  const { user, isGuest, getUserName, logout, userOpdName } = useAuthStore();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
   
-  // Simulasi Data Statistik (Nanti diganti API)
+  // State Statistik Real
   const [stats, setStats] = useState({
-    waiting: 5,
-    process: 2,
-    done: 10
+    waiting: 0,
+    process: 0,
+    done: 0
   });
+
+  // --- LOGIC FETCH DATA (Khusus Pegawai) ---
+  const loadData = useCallback(async () => {
+    // 🛑 JIKA TAMU: Stop, jangan panggil API
+    if (isGuest) {
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      // Panggil API Insiden & Request secara paralel
+      const [incidents, requests] = await Promise.all([
+        incidentApi.getAll(),
+        requestApi.getAll()
+      ]);
+
+      // Gabungkan data untuk hitung statistik
+      // Backend mengembalikan array di response.data.data (sudah dihandle di service)
+      const allTickets = [...(incidents || []), ...(requests || [])];
+
+      // Hitung Statistik Client-Side
+      let wait = 0;
+      let proc = 0;
+      let fin = 0;
+
+      allTickets.forEach((t: any) => {
+        const s = t.status?.toLowerCase() || '';
+        
+        // Logika pengelompokan status
+        if (s === 'open' || s === 'pending_approval' || s === 'assigned' || s === 'new') {
+          wait++;
+        } else if (s === 'in_progress' || s === 'on_hold') {
+          proc++;
+        } else if (s === 'resolved' || s === 'closed' || s === 'completed') {
+          fin++;
+        }
+      });
+
+      setStats({ waiting: wait, process: proc, done: fin });
+
+    } catch (error) {
+      console.error("Gagal memuat data home:", error);
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
+  }, [isGuest]);
+
+  // Load saat pertama kali buka
+  useEffect(() => {
+    if (!isGuest) {
+      setLoading(true);
+      loadData();
+    }
+  }, [loadData, isGuest]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    // TODO: Panggil API Refresh Data disini
-    setTimeout(() => setRefreshing(false), 1500);
+    loadData();
   };
 
   // --- LOGIC WARNA ICON & BACKGROUND ---
-  // Agar tidak aneh di Dark Mode
   const getGridStyles = () => {
     if (isDark) {
       return {
@@ -71,11 +144,7 @@ export default function HomeScreen() {
             styles.gridIconBox, 
             { backgroundColor: gridStyle.bgPengaduan }
           ]}>
-            <PengaduanIcon 
-              width={32} 
-              height={32} 
-              color={gridStyle.iconColor} 
-            />
+            <PengaduanIcon width={32} height={32} color={gridStyle.iconColor} />
           </View>
           <Text style={[styles.gridLabel, { color: colors.text.primary }]}>Pengaduan</Text>
         </TouchableOpacity>
@@ -89,11 +158,7 @@ export default function HomeScreen() {
             styles.gridIconBox, 
             { backgroundColor: gridStyle.bgPermintaan }
           ]}>
-            <PermintaanIcon 
-              width={32} 
-              height={32} 
-              color={gridStyle.iconColor} 
-            />
+            <PermintaanIcon width={32} height={32} color={gridStyle.iconColor} />
           </View>
           <Text style={[styles.gridLabel, { color: colors.text.primary }]}>Permintaan</Text>
         </TouchableOpacity>
@@ -105,28 +170,35 @@ export default function HomeScreen() {
         Ringkasan Layanan
       </Text>
       
-      <View style={styles.statsContainer}>
-        {/* Card Menunggu */}
-        <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
-          <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.waiting}</Text>
-          <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
-          <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Menunggu Persetujuan</Text>
-        </View>
+      {loading && !refreshing ? (
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
+      ) : (
+        <View style={styles.statsContainer}>
+          {/* Card Menunggu */}
+          <TouchableOpacity 
+             style={[styles.statCard, { backgroundColor: colors.background.card }]}
+             onPress={() => navigation.navigate('Lacak')} // Bisa di-klik ke list tiket
+          >
+            <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.waiting}</Text>
+            <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Menunggu & Baru</Text>
+          </TouchableOpacity>
 
-        {/* Card Diproses */}
-        <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
-          <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.process}</Text>
-          <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
-          <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Diproses</Text>
-        </View>
+          {/* Card Diproses */}
+          <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
+            <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.process}</Text>
+            <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Diproses</Text>
+          </View>
 
-        {/* Card Selesai */}
-        <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
-          <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.done}</Text>
-          <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
-          <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Selesai</Text>
+          {/* Card Selesai */}
+          <View style={[styles.statCard, { backgroundColor: colors.background.card }]}>
+            <Text style={[styles.statNumber, { color: isDark ? '#FFFFFF' : colors.primary }]}>{stats.done}</Text>
+            <View style={[styles.statDivider, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.statLabel, { color: colors.text.secondary }]}>Selesai</Text>
+          </View>
         </View>
-      </View>
+      )}
     </>
   );
 
@@ -148,11 +220,7 @@ export default function HomeScreen() {
             styles.listIconBox, 
             { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E3F2FD' }
           ]}>
-            <PengaduanIcon 
-              width={28} 
-              height={28} 
-              color={isDark ? '#FFF' : colors.primary} 
-            />
+            <PengaduanIcon width={28} height={28} color={isDark ? '#FFF' : colors.primary} />
           </View>
           <View style={styles.listTextContainer}>
             <Text style={[styles.listTitle, { color: colors.text.primary }]}>Buat Pengaduan</Text>
@@ -166,17 +234,13 @@ export default function HomeScreen() {
         {/* Card FAQ */}
         <TouchableOpacity 
           style={[styles.listCard, { backgroundColor: colors.background.card }]}
-          onPress={() => navigation.navigate('Info')} // Asumsi InfoScreen adalah FAQ
+          onPress={() => navigation.navigate('Info')} 
         >
           <View style={[
             styles.listIconBox, 
             { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E0F7FA' }
           ]}>
-            <FAQIcon 
-              width={28} 
-              height={28} 
-              color={isDark ? '#FFF' : colors.primary} 
-            />
+            <FAQIcon width={28} height={28} color={isDark ? '#FFF' : colors.primary} />
           </View>
           <View style={styles.listTextContainer}>
             <Text style={[styles.listTitle, { color: colors.text.primary }]}>Pertanyaan Umum (FAQ)</Text>
@@ -189,12 +253,11 @@ export default function HomeScreen() {
 
       </View>
 
-      {/* Banner Tamu (Jika login sebagai tamu) */}
+      {/* Banner Tamu */}
       {isGuest && (
           <View style={[
             styles.guestBanner, 
             { 
-              // Background card menyesuaikan dark mode
               backgroundColor: colors.background.card,
               borderColor: colors.primary 
             }
@@ -233,9 +296,10 @@ export default function HomeScreen() {
       {/* HEADER */}
       <CustomHeader 
         type="home"
-        userName={getUserName()} // Nama User / "Tamu Masyarakat"
-        userUnit={!isGuest && user?.opd_id ? `Unit ID: ${user.opd_id}` : 'Umum'}
-        showNotificationButton={!isGuest} // Tamu gak butuh notif
+        userName={getUserName()} 
+        // ✅ FIX: Gunakan userOpdName() biar aman
+        userUnit={isGuest ? 'Umum' : (userOpdName() || 'Instansi User')}
+        showNotificationButton={!isGuest}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
@@ -247,11 +311,9 @@ export default function HomeScreen() {
         }
       >
         <View style={styles.content}>
-          {/* LOGIC TAMPILAN: GUEST = MASYARAKAT VIEW */}
           {isGuest ? renderMasyarakatView() : renderPegawaiView()}
         </View>
         
-        {/* Spacer */}
         <View style={{ height: hp(10) }} /> 
       </ScrollView>
     </View>
@@ -278,8 +340,8 @@ const styles = StyleSheet.create({
   // --- STYLES PEGAWAI (GRID) ---
   gridContainer: {
     flexDirection: 'row',
-    justifyContent: 'center', // Center align
-    gap: wp(10), // Jarak antar tombol
+    justifyContent: 'center', 
+    gap: wp(10), 
   },
   gridItem: {
     alignItems: 'center',
@@ -288,11 +350,10 @@ const styles = StyleSheet.create({
   gridIconBox: {
     width: wp(18),
     height: wp(18),
-    borderRadius: BorderRadius.xl, // Lebih kotak tapi rounded
+    borderRadius: BorderRadius.xl, 
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xs,
-    // Shadow tipis
     ...Shadow.sm,
   },
   gridLabel: {

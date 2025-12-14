@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, StatusBar 
+  View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, StatusBar, Alert 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -12,56 +12,94 @@ import { useAuthStore } from '../../store/authStore';
 import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontFamily, FontSize } from '../../styles/typography';
 
-// --- IMPORTS DATA ---
-// Pastikan file ini ada
-import { MOCK_NOTIFICATIONS, NotificationItem } from '../../data/mockData';
+// --- INTERNAL MOCK DATA ---
+interface NotificationItem {
+  id: string;
+  type: 'incident' | 'request' | 'system';
+  title: string;
+  message: string;
+  ticketId?: number; 
+  ticketNumber?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+const MOCK_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: '1',
+    type: 'incident',
+    title: 'Tiket Selesai',
+    message: 'Laporan kerusakan AC...',
+    ticketId: 131, // Ganti dengan ID Pengaduan yang valid (Cek di Home)
+    ticketNumber: 'INC-2025-0105',
+    isRead: false,
+    createdAt: '2 Jam yang lalu'
+  },
+  {
+    id: '2',
+    type: 'request',
+    title: 'Permintaan Disetujui',
+    message: 'Pengajuan Laptop baru telah disetujui oleh Kepala OPD.',
+    ticketId: 153, // Pastikan ID ini ada di DB kamu utk tes
+    ticketNumber: 'REQ-2024-055',
+    isRead: true,
+    createdAt: '1 Hari yang lalu'
+  },
+  {
+    id: '3',
+    type: 'system',
+    title: 'Maintenance System',
+    message: 'Sistem akan maintenance pada hari Sabtu pukul 23:00 WIB.',
+    isRead: true,
+    createdAt: '2 Hari yang lalu'
+  }
+];
 
 export default function NotificationScreen() {
   const navigation = useNavigation<any>();
   
-  // 1. Theme & Auth
   const { colors, isDark } = useTheme();
   const { user, isGuest } = useAuthStore(); 
 
-  // State
   const [activeFilter, setActiveFilter] = useState<'Semua' | 'Permintaan' | 'Pengaduan'>('Semua');
   const [notifications, setNotifications] = useState<NotificationItem[]>(MOCK_NOTIFICATIONS);
 
   // --- LOGIC FILTER ---
   const getFilteredData = () => {
-    // 1. Jika Masyarakat (Tamu), tampilkan semua (tanpa filter UI)
     if (isGuest) return notifications;
-
-    // 2. Jika Pegawai/Teknisi, filter berdasarkan Tab
     if (activeFilter === 'Semua') return notifications;
     if (activeFilter === 'Pengaduan') return notifications.filter(n => n.type === 'incident');
     if (activeFilter === 'Permintaan') return notifications.filter(n => n.type === 'request');
-    
     return notifications;
   };
 
-  // --- LOGIC KLIK ---
+  // --- LOGIC KLIK (FIXED) ---
   const handlePress = (item: NotificationItem) => {
-    // Tandai sudah dibaca
+    // 1. Tandai sudah dibaca
     const updatedList = notifications.map(n => 
       n.id === item.id ? { ...n, isRead: true } : n
     );
     setNotifications(updatedList);
 
-    // Navigasi ke Detail
-    if (item.ticketId) {
-      navigation.navigate('TicketDetail', { ticketId: item.ticketId });
+    // 2. Navigasi
+    if (item.type === 'system') {
+      Alert.alert(item.title, item.message);
+    } 
+    else if (item.ticketId) {
+      // ✅ KUNCI PERBAIKAN ADA DISINI
+      // Kita harus kirim 'ticketType' sesuai item.type ('request' atau 'incident')
+      navigation.navigate('TicketDetail', { 
+        ticketId: item.ticketId, 
+        ticketType: item.type // <--- JANGAN LUPA INI
+      });
     }
   };
 
   // --- RENDER CARD NOTIFIKASI ---
   const renderItem = ({ item }: { item: NotificationItem }) => {
-    // Logic Background Card:
-    // Read -> Warna Card Default (Putih/Abu Gelap)
-    // Unread -> Warna Highlight Tipis (Biru Muda/Abu Terang)
     const cardBg = item.isRead 
       ? colors.background.card 
-      : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#F0F9FF'); // Highlight unread
+      : (isDark ? 'rgba(59, 130, 246, 0.15)' : '#F0F9FF');
 
     return (
       <TouchableOpacity 
@@ -78,12 +116,11 @@ export default function NotificationScreen() {
         {/* HEADER CARD */}
         <View style={styles.cardHeaderRow}>
           <Text style={[styles.cardType, { color: colors.primary }]}>
-            {item.type === 'incident' ? 'Pengaduan' : 'Permintaan'} 
-            <Text style={{ color: colors.text.tertiary }}> • #{item.ticketId || 'SYS'}</Text>
+            {item.type === 'incident' ? 'Pengaduan' : item.type === 'request' ? 'Permintaan' : 'Info'} 
+            {item.ticketNumber && <Text style={{ color: colors.text.tertiary }}> • {item.ticketNumber}</Text>}
           </Text>
           
-          {/* Dot Indikator Belum Dibaca */}
-          {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.accent }]} />}
+          {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
         </View>
 
         {/* JUDUL */}
@@ -112,34 +149,24 @@ export default function NotificationScreen() {
         translucent 
       />
       
-      {/* 1. HEADER */}
       <CustomHeader 
         type="page"
         title="Notifikasi"
-        showNotificationButton={false} // Sudah di halaman notif
+        showNotificationButton={false} 
       />
 
       <View style={styles.contentContainer}>
         
-        {/* 2. FILTER BUBBLES (Hanya Pegawai/Teknisi) */}
+        {/* FILTER BUBBLES */}
         {!isGuest && (
           <View style={styles.filterWrapper}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {['Semua', 'Permintaan', 'Pengaduan'].map((f) => {
                 const isActive = activeFilter === f;
                 
-                // Warna Bubble
-                const bubbleBg = isActive 
-                  ? colors.primary // Biru jika aktif
-                  : colors.background.card; // Putih/Abu jika tidak aktif
-                
-                const bubbleBorder = isActive 
-                  ? colors.primary 
-                  : colors.border.light;
-
-                const bubbleTextColor = isActive 
-                  ? colors.white 
-                  : colors.text.secondary;
+                const bubbleBg = isActive ? colors.primary : colors.background.card;
+                const bubbleBorder = isActive ? colors.primary : colors.border.light;
+                const bubbleTextColor = isActive ? '#FFF' : colors.text.secondary;
 
                 return (
                   <TouchableOpacity 
@@ -160,7 +187,7 @@ export default function NotificationScreen() {
           </View>
         )}
 
-        {/* 3. LIST NOTIFIKASI */}
+        {/* LIST NOTIFIKASI */}
         <FlatList
           data={getFilteredData()}
           keyExtractor={item => item.id}
@@ -185,102 +212,29 @@ export default function NotificationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  contentContainer: { flex: 1 },
 
   // FILTER SECTION
-  filterWrapper: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-  },
-  filterBubble: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: BorderRadius.xl, // Lebih bulat
-    marginRight: 10,
-    borderWidth: 1,
-    ...Shadow.sm, // Shadow tipis
-  },
-  filterText: {
-    fontFamily: FontFamily.poppins.semibold,
-    fontSize: FontSize.xs,
-  },
+  filterWrapper: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
+  filterBubble: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: BorderRadius.xl, marginRight: 10, borderWidth: 1, ...Shadow.sm },
+  filterText: { fontFamily: FontFamily.poppins.semibold, fontSize: FontSize.xs },
 
   // LIST SECTION
-  listContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: hp(5),
-    paddingTop: Spacing.sm,
-  },
+  listContent: { paddingHorizontal: Spacing.lg, paddingBottom: hp(5), paddingTop: Spacing.sm },
 
   // CARD STYLE
-  card: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    marginBottom: Spacing.sm,
-    ...Shadow.sm,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  cardType: {
-    fontFamily: FontFamily.poppins.medium,
-    fontSize: FontSize.xs,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  
-  cardTitle: {
-    fontFamily: FontFamily.poppins.semibold,
-    fontSize: FontSize.md, // Lebih besar dikit dari type
-    marginBottom: 4,
-  },
-
-  cardFooterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginTop: 4,
-  },
-  cardSubtitle: {
-    fontFamily: FontFamily.poppins.regular,
-    fontSize: FontSize.sm,
-    flex: 1, 
-    marginRight: 15,
-    lineHeight: 20,
-  },
-  cardTime: {
-    fontFamily: FontFamily.poppins.regular,
-    fontSize: 10,
-    marginTop: 2,
-  },
+  card: { padding: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1, marginBottom: Spacing.sm, ...Shadow.sm },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  cardType: { fontFamily: FontFamily.poppins.medium, fontSize: FontSize.xs },
+  unreadDot: { width: 8, height: 8, borderRadius: 4 },
+  cardTitle: { fontFamily: FontFamily.poppins.semibold, fontSize: FontSize.md, marginBottom: 4 },
+  cardFooterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 4 },
+  cardSubtitle: { fontFamily: FontFamily.poppins.regular, fontSize: FontSize.sm, flex: 1, marginRight: 15, lineHeight: 20 },
+  cardTime: { fontFamily: FontFamily.poppins.regular, fontSize: 10, marginTop: 2 },
 
   // EMPTY STATE
-  emptyState: {
-    alignItems: 'center',
-    marginTop: hp(10),
-    paddingHorizontal: 40,
-  },
-  emptyText: {
-    fontFamily: FontFamily.poppins.semibold,
-    fontSize: FontSize.lg,
-    marginTop: 15,
-  },
-  emptySub: {
-    fontFamily: FontFamily.poppins.regular,
-    fontSize: FontSize.sm,
-    textAlign: 'center',
-    marginTop: 5,
-  },
+  emptyState: { alignItems: 'center', marginTop: hp(10), paddingHorizontal: 40 },
+  emptyText: { fontFamily: FontFamily.poppins.semibold, fontSize: FontSize.lg, marginTop: 15 },
+  emptySub: { fontFamily: FontFamily.poppins.regular, fontSize: FontSize.sm, textAlign: 'center', marginTop: 5 },
 });

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, Text, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useFonts, Poppins_500Medium } from '@expo-google-fonts/poppins'; // Tetap load font disini agar aman
+import { useFonts, Poppins_500Medium } from '@expo-google-fonts/poppins';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ Import Insets
 
-// --- STATE & THEME BARU ---
+// --- STATE & THEME ---
 import { useTheme } from '../hooks/useTheme';
 import { useAuthStore } from '../store/authStore';
 
@@ -41,7 +42,7 @@ import InformationScreen from '../screens/user/InformationScreen';
 import InformationDetailScreen from '../screens/user/InformationDetailScreen';
 import SatisfactionSurveyScreen from '../screens/user/SatisfactionSurveyScreen';
 
-// Technician (YANG BARU KITA EDIT)
+// Technician
 import TechnicianHomeScreen from '../screens/technician/TechnicianHomeScreen';
 import TechnicianTaskScreen from '../screens/technician/TechnicianTaskScreen';
 import TechnicianScheduleScreen from '../screens/technician/TechnicianScheduleScreen';
@@ -68,7 +69,7 @@ const CustomScanButton = ({ onPress }: any) => {
   return (
     <TouchableOpacity
       style={{
-        top: -30,
+        top: -25, // Naikkan sedikit agar terlihat menonjol
         justifyContent: 'center',
         alignItems: 'center',
       }}
@@ -76,30 +77,37 @@ const CustomScanButton = ({ onPress }: any) => {
       activeOpacity={0.8}
     >
       <View style={{
-        width: 66,
-        height: 66,
-        borderRadius: 33,
-        backgroundColor: theme.colors.primary, // Pakai Theme
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: theme.colors.primary, 
         borderWidth: 4,
         borderColor: theme.colors.background.primary,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 5,
+        elevation: 8,
         shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
+        shadowOpacity: 0.4,
+        shadowRadius: 5,
       }}>
-        <ScanIcon width={30} height={30} color="#FFFFFF" />
+        <ScanIcon width={28} height={28} color="#FFFFFF" />
       </View>
     </TouchableOpacity>
   );
 };
 
-// 2. Tab untuk Masyarakat/Pegawai
+// 2. Tab untuk Masyarakat/Pegawai (FIXED LAYOUT)
 function UserTabs() {
   const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   
+  // ✅ LOGIC FIX: 
+  // Ambil insets.bottom (iPhone X atau Android Gesture).
+  // Jika 0 (Android Tombol Fisik), paksa minimal 15px agar tidak mepet bawah.
+  const safeBottom = Math.max(insets.bottom, 15);
+  const tabHeight = 60 + safeBottom; 
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -110,16 +118,21 @@ function UserTabs() {
         tabBarLabelStyle: {
           fontFamily: 'Poppins_500Medium',
           fontSize: 10,
-          marginTop: 5,
+          marginTop: -5,
           paddingBottom: 5,
         },
         tabBarStyle: {
-          height: Platform.OS === 'ios' ? 90 : 70,
+          height: tabHeight,
           backgroundColor: colors.bottomBar.background,
           borderTopWidth: 0,
           elevation: 10,
+          shadowColor: "#000",
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
           position: 'absolute',
           bottom: 0,
+          paddingTop: 10,
+          paddingBottom: safeBottom - 5, // Padding isi tab agar naik dikit
         },
       }}
     >
@@ -163,9 +176,14 @@ function UserTabs() {
   );
 }
 
-// 3. Tab untuk Teknisi
+// 3. Tab untuk Teknisi (FIXED LAYOUT)
 function TechnicianTabs() {
   const { theme, colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  
+  // ✅ LOGIC FIX SAMA
+  const safeBottom = Math.max(insets.bottom, 15);
+  const tabHeight = 60 + safeBottom;
 
   return (
     <Tab.Navigator
@@ -177,22 +195,23 @@ function TechnicianTabs() {
         tabBarLabelStyle: {
           fontFamily: 'Poppins_500Medium',
           fontSize: 10,
-          marginTop: 5,
+          marginTop: -5,
           paddingBottom: 5,
         },
         tabBarStyle: {
-          height: Platform.OS === 'ios' ? 90 : 70,
+          height: tabHeight,
           backgroundColor: colors.bottomBar.background,
           borderTopWidth: 0,
           elevation: 10,
           position: 'absolute',
           bottom: 0,
+          paddingTop: 10,
+          paddingBottom: safeBottom - 5,
         },
       }}
     >
       <Tab.Screen 
         name="Dashboard" 
-        // ✅ INI YANG BARU KITA EDIT
         component={TechnicianHomeScreen} 
         options={{
           tabBarLabel: 'Beranda',
@@ -235,12 +254,9 @@ function TechnicianTabs() {
 // --- ROOT NAVIGATOR (MAIN SWITCH) ---
 export default function RootNavigator() {
   const { colors } = useTheme();
-  const { isAuthenticated, userRole, isGuest } = useAuthStore();
+  const { isAuthenticated, userRole, isGuest, user } = useAuthStore();
   
-  // STATE 1: Loading Font & Asset Awal
   const [isAssetReady, setAssetReady] = useState(false);
-  
-  // STATE 2: Menunggu Animasi Splash Screen Selesai
   const [isSplashAnimationFinished, setSplashAnimationFinished] = useState(false);
 
   let [fontsLoaded] = useFonts({
@@ -253,14 +269,10 @@ export default function RootNavigator() {
     }
   }, [fontsLoaded]);
 
-  // --- TAHAP 1: STATIC SPLASH (Native) ---
-  // Selama aset font belum siap, jangan tampilkan apa-apa (biar native splash masih ada)
   if (!isAssetReady) {
     return null; 
   }
 
-  // --- TAHAP 2: ANIMATED SPLASH ---
-  // Aset siap, tapi animasi splash belum selesai? Tampilkan Component SplashScreen
   if (!isSplashAnimationFinished) {
     return (
       <SplashScreen 
@@ -269,11 +281,25 @@ export default function RootNavigator() {
     );
   }
 
-  // --- TAHAP 3: NAVIGATOR (Aplikasi Utama) ---
-  // Baru dirender SETELAH splash selesai.
-  
-  const role = userRole();
-  const isTechnician = role === 'teknisi';
+  // --- LOGIC DETEKSI ROLE ---
+  const getSafeRole = () => {
+    if (isGuest) return 'guest';
+    try {
+      const rawRole = user?.role;
+      if (typeof rawRole === 'object' && rawRole !== null) {
+        return (rawRole as any).id || (rawRole as any).name || 'masyarakat';
+      }
+      if (typeof rawRole === 'string') {
+        return rawRole;
+      }
+      return userRole();
+    } catch (e) {
+      return 'masyarakat';
+    }
+  };
+
+  const roleString = getSafeRole();
+  const isTechnician = roleString?.toLowerCase() === 'teknisi';
 
   return (
     <NavigationContainer>
@@ -285,9 +311,7 @@ export default function RootNavigator() {
         }}
       >
         
-        {/* LOGIC PERCABANGAN UTAMA */}
         {!isAuthenticated && !isGuest ? (
-          // JALUR AUTH (Belum Login)
           <Stack.Group>
              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
              <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
@@ -298,7 +322,6 @@ export default function RootNavigator() {
              <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
           </Stack.Group>
         ) : (
-          // JALUR UTAMA (Sudah Login / Tamu)
           <Stack.Group>
             {isTechnician ? (
                <Stack.Screen name="TechnicianApp" component={TechnicianTabs} />
@@ -308,13 +331,14 @@ export default function RootNavigator() {
           </Stack.Group>
         )}
 
-        {/* COMMON SCREENS (Bisa diakses dari mana saja) */}
+        {/* COMMON SCREENS */}
         <Stack.Group>
           <Stack.Screen name="CreateIncident" component={CreateIncidentScreen} />
           <Stack.Screen name="DetailIncident" component={DetailIncidentScreen} /> 
           <Stack.Screen name="CreateRequest" component={CreateRequestScreen} /> 
           <Stack.Screen name="DetailRequest" component={DetailRequestScreen} /> 
           <Stack.Screen name="TicketDetail" component={TicketDetailScreen} />
+          <Stack.Screen name="TicketListScreen" component={TicketListScreen} />
           <Stack.Screen name="Notifications" component={NotificationScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="Info" component={InformationScreen} />

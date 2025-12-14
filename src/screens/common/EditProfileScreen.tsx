@@ -24,7 +24,7 @@ import { FontFamily, FontSize } from '../../styles/typography';
 
 // --- IMPORTS API & SERVICES ---
 import { authApi } from '../../services/api/auth';
-import { uploadToCloudinary } from '../../services/storageService';
+import { uploadToCloudinary } from '../../services/uploadService';
 import { CLOUDINARY_FOLDER_AVATAR } from '../../config/cloudinary';
 
 // --- IMPORTS SVG ---
@@ -95,7 +95,7 @@ export default function EditProfileScreen() {
   // Pass theme object ke child component
   const theme = { colors, isDark }; 
   
-  const { user, userRole, updateUserData } = useAuthStore(); 
+  const { user, userRole, refreshUserProfile } = useAuthStore(); 
 
   // --- STATE FORM ---
   const [username, setUsername] = useState('');
@@ -109,9 +109,12 @@ export default function EditProfileScreen() {
   // --- INIT DATA ---
   useEffect(() => {
     if (user) {
+      console.log("👤 Profile Loaded in Edit Screen:", user); // DEBUG LOG
       setUsername(user.username || '');
       setPhone(user.phone || '');
       setAddress((user as any).address || ''); 
+      
+      // Pastikan avatarUri mengambil dari user.avatar_url
       setAvatarUri(user.avatar_url || null);
     }
   }, [user]);
@@ -137,30 +140,38 @@ export default function EditProfileScreen() {
   };
 
   // --- LOGIC SAVE ---
-  const handleSave = async () => {
+const handleSave = async () => {
     setIsUploading(true);
     try {
+      // 1. Tentukan URL Avatar
       let finalAvatarUrl = user?.avatar_url;
 
-      // 1. Upload ke Cloudinary
+      // Cek apakah ada gambar baru yang dipilih dari galeri
       if (avatarUri && avatarUri !== user?.avatar_url) {
+        console.log("🚀 Uploading image to Cloudinary...");
+        
+        // Upload & Tunggu URL barunya
         finalAvatarUrl = await uploadToCloudinary(avatarUri, CLOUDINARY_FOLDER_AVATAR);
+        
+        console.log("✅ Upload Done. URL:", finalAvatarUrl);
       }
 
-      // 2. Data Payload
+      // 2. Siapkan Payload (Kirim data yang benar-benar mau diupdate)
       const updatedData = {
-        username, 
-        phone,
-        address,
-        avatar_url: finalAvatarUrl
+        username: username, 
+        phone: phone,
+        address: address,
+        avatar_url: finalAvatarUrl // Pastikan ini string URL valid atau string kosong, jangan null/undefined jika backend sensitif
       };
 
-      // 3. API Call
-      const response = await authApi.updateProfile(updatedData);
+      console.log("📤 Sending Payload:", updatedData);
 
-      // 4. Update Local Store
-      const newUser = response.data || response.user || { ...user, ...updatedData };
-      updateUserData(newUser);
+      // 3. Kirim ke Backend
+      await authApi.updateProfile(updatedData);
+
+      // 4. ✅ CRITICAL FIX: Refresh Data dari Server
+      // Jangan update manual, minta server kasih data terbaru
+      await refreshUserProfile();
 
       Alert.alert("Sukses", "Profil berhasil diperbarui.", [
         { text: "OK", onPress: () => navigation.goBack() }
@@ -168,7 +179,7 @@ export default function EditProfileScreen() {
 
     } catch (error: any) {
       console.error("Save Profile Error:", error);
-      const msg = error.response?.data?.message || error.message || "Gagal menyimpan.";
+      const msg = error.response?.data?.message || "Gagal menyimpan profil.";
       Alert.alert("Gagal", msg);
     } finally {
       setIsUploading(false);

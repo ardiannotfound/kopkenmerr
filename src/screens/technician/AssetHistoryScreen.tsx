@@ -1,18 +1,40 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { MOCK_TICKETS } from '../../data/mockData';
+
+// --- MOCK DATA INTERNAL (Karena API Asset History belum ada) ---
+const MOCK_ASSET_HISTORY = [
+  {
+    id: 'INC-2024-001',
+    title: 'Monitor Berkedip',
+    status: 'closed',
+    createdAt: '2024-12-01',
+    technicianId: 'Teknisi A',
+    assetName: 'Monitor Dell 24"'
+  },
+  {
+    id: 'INC-2024-005',
+    title: 'Kabel Power Rusak',
+    status: 'in_progress',
+    createdAt: '2024-12-10',
+    technicianId: 'Teknisi B',
+    assetName: 'PC Admin 01'
+  }
+];
 
 export default function AssetHistoryScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { assetId } = route.params;
+  
+  // Ambil ID Aset dari scan QR atau params
+  const { assetId } = route.params || { assetId: 'UNKNOWN-ASSET' };
 
-  // Cari riwayat tiket yang berhubungan dengan aset ini (Matching Nama/ID)
-  // Logic: Cari tiket yang assetName-nya mengandung ID yang discan
-  const history = MOCK_TICKETS.filter(t => 
-    t.assetName && t.assetName.toLowerCase().includes(assetId.toLowerCase())
+  // --- LOGIC FILTER MOCK DATA ---
+  // Kita cari data dummy yang kira-kira cocok (di real app nanti panggil API)
+  const history = MOCK_ASSET_HISTORY.filter(t => 
+    assetId === 'UNKNOWN-ASSET' || // Tampilkan semua jika testing
+    t.assetName.toLowerCase().includes('monitor') // Simulasi filter
   );
 
   return (
@@ -51,10 +73,11 @@ export default function AssetHistoryScreen() {
           <TouchableOpacity 
             key={ticket.id} 
             style={styles.historyCard}
-            onPress={() => navigation.navigate('TicketDetail', { ticketId: ticket.id })}
+            // Arahkan ke Detail Tiket (Incident)
+            onPress={() => navigation.navigate('TicketDetail', { ticketId: 108 })} // Hardcode ID dummy agar tidak error
           >
             <View style={styles.historyHeader}>
-              <Text style={styles.date}>{new Date(ticket.createdAt).toLocaleDateString()}</Text>
+              <Text style={styles.date}>{ticket.createdAt}</Text>
               <View style={[styles.badge, ticket.status === 'closed' ? styles.bgGreen : styles.bgOrange]}>
                 <Text style={styles.badgeText}>{ticket.status.toUpperCase()}</Text>
               </View>

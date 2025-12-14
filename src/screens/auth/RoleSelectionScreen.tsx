@@ -20,10 +20,10 @@ export default function RoleSelectionScreen() {
   
   // 1. Ambil colors DAN isDark
   const { colors, isDark } = useTheme(); 
-  const { loginAsGuest } = useAuthStore();
+  const { guestLogin } = useAuthStore();
 
   const handleGuest = () => {
-    loginAsGuest(); 
+    guestLogin(); 
   };
 
   const handleLogin = () => {

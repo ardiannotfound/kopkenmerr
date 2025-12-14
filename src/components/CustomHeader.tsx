@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from 'react-native-vector-icons/Ionicons'; // ✅ Fix import
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // --- IMPORTS DARI SYSTEM BARU ---
 import { useTheme } from '../hooks/useTheme';
@@ -16,7 +16,8 @@ interface CustomHeaderProps {
   userUnit?: string; 
   title?: string;    
   onNotificationPress?: () => void;
-  showNotificationButton?: boolean; 
+  showNotificationButton?: boolean;
+  onBackPress?: () => void; // ✅ TAMBAHAN: Custom Back Action
 }
 
 export default function CustomHeader({ 
@@ -25,7 +26,8 @@ export default function CustomHeader({
   userUnit, 
   title, 
   onNotificationPress,
-  showNotificationButton = false 
+  showNotificationButton = false,
+  onBackPress // ✅ Destructure prop baru
 }: CustomHeaderProps) {
   
   const navigation = useNavigation();
@@ -38,6 +40,15 @@ export default function CustomHeader({
   // 2. Logic Notifikasi: Sembunyikan jika Guest
   const shouldShowNotification = (type === 'home' || showNotificationButton) && !isGuest;
 
+  // 3. ✅ Logic Tombol Kembali (Custom vs Default)
+  const handleBack = () => {
+    if (onBackPress) {
+      onBackPress(); // Jalankan logic custom (misal: reset form)
+    } else {
+      navigation.goBack(); // Default navigasi mundur
+    }
+  };
+
   return (
     <ImageBackground 
       source={require('../../assets/all-header.png')} 
@@ -49,14 +60,21 @@ export default function CustomHeader({
       {/* === BAGIAN ATAS (Top Row) === */}
       <View style={styles.topRow}>
         
-        {/* KIRI ATAS */}
+        {/* KIRI ATAS: DATA USER */}
         <View style={styles.topLeftContainer}>
           {type === 'home' ? (
             <View>
               <Text style={styles.greetingText}>Selamat Datang,</Text>
-              <Text style={styles.userNameText} numberOfLines={1}>{userName || 'Pengguna'}</Text>
+              
+              {/* ✅ FIX: Nama User Boleh 2 Baris agar tidak terpotong */}
+              <Text style={styles.userNameText} numberOfLines={2} adjustsFontSizeToFit>
+                {userName || 'Pengguna'}
+              </Text>
+              
               {userUnit && (
-                <Text style={styles.userUnitText} numberOfLines={1}>{userUnit}</Text> 
+                <Text style={styles.userUnitText} numberOfLines={2}>
+                  {userUnit}
+                </Text> 
               )}
             </View>
           ) : (
@@ -64,7 +82,7 @@ export default function CustomHeader({
           )}
         </View>
 
-        {/* KANAN ATAS */}
+        {/* KANAN ATAS: TOMBOL AKSI */}
         <View style={styles.topRightContainer}>
           {/* Dark Mode Button */}
           <TouchableOpacity 
@@ -93,18 +111,18 @@ export default function CustomHeader({
         </View>
       </View>
 
-      {/* === BAGIAN BAWAH === */}
+      {/* === BAGIAN BAWAH: JUDUL HALAMAN === */}
       {type === 'page' ? (
         <View style={styles.bottomRow}>
           <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
+            onPress={handleBack} // ✅ Gunakan handleBack yg sudah diperbaiki
             style={styles.backButtonCircle}
             activeOpacity={0.7}
           >
             <Ionicons name="chevron-back" size={20} color={colors.primary} />
           </TouchableOpacity>
 
-          <Text style={styles.pageTitle} numberOfLines={1}>
+          <Text style={styles.pageTitle} numberOfLines={1} adjustsFontSizeToFit>
             {title}
           </Text>
         </View>
@@ -119,7 +137,8 @@ export default function CustomHeader({
 const styles = StyleSheet.create({
   headerContainer: {
     width: wp(100),
-    minHeight: hp(18), // Sedikit lebih pendek agar rapi
+    // Gunakan minHeight agar background bisa memanjang jika nama user 2 baris
+    minHeight: hp(18), 
     paddingHorizontal: wp(5),
     paddingBottom: hp(2),
     justifyContent: 'space-between', 
@@ -129,39 +148,40 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start', 
+    alignItems: 'flex-start', // Align start penting agar tombol kanan tetap di atas meski nama panjang
     width: '100%',
   },
   
   topLeftContainer: {
-    flex: 1, 
+    flex: 1, // ✅ Flex 1 agar mengambil sisa ruang yang ada
     justifyContent: 'center',
-    paddingRight: 10,
+    paddingRight: 15, // Jarak aman agar teks tidak menabrak tombol kanan
   },
   
-  // GUNAKAN FONT FAMILY STRING LANGSUNG (Pastikan nama ini sama dengan di useCachedResources)
   greetingText: {
-    fontFamily: 'Poppins-Medium', // Ganti Inter ke Poppins biar konsisten
+    fontFamily: 'Poppins-Medium', 
     fontSize: 12,
     color: '#E0E0E0', 
+    marginBottom: 2,
   },
   userNameText: {
     fontFamily: 'Poppins-Bold',
-    fontSize: 18,
+    fontSize: 18, // Ukuran font tetap terbaca jelas
     color: '#FFFFFF',
-    marginTop: -2,
+    lineHeight: 24, // Spasi baris agar tidak dempet jika 2 baris
   },
   userUnitText: {
     fontFamily: 'Poppins-Regular',
     fontSize: 11, 
     color: '#81C3D7', 
-    marginTop: -2,
+    marginTop: 2,
+    lineHeight: 14,
   },
 
   topRightContainer: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 5, 
+    marginTop: 0, // Reset margin top agar sejajar dengan baris pertama teks
   },
 
   circleButton: {
@@ -204,6 +224,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
     fontSize: 20, 
     color: '#FFFFFF', 
-    flex: 1, 
+    flex: 1, // Agar judul tidak nabrak jika sangat panjang
   },
 });

@@ -1,62 +1,119 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, KeyboardAvoidingView 
+  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Platform 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
-// --- IMPORTS SYSTEM BARU ---
+// --- IMPORTS SYSTEM ---
 import CustomHeader from '../../components/CustomHeader';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuthStore } from '../../store/authStore';
-import { wp, hp, Spacing, BorderRadius, InputHeight, Shadow } from '../../styles/spacing';
-import { FontFamily, FontSize } from '../../styles/typography';
+import { wp, hp } from '../../styles/spacing';
+
+// --- API ---
+// ✅ PENTING: Kita butuh ini untuk mencari Nama OPD jika di user cuma ada ID-nya
+import { catalogApi } from '../../services/api/catalogs'; 
 
 export default function CreateRequestScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   
-  // 1. Theme & Auth
-  const { colors, isDark } = useTheme();
-  const { user, isGuest } = useAuthStore(); 
+  // 1. Ambil Theme & Auth Store
+  const { theme, colors, typography, isDark } = useTheme();
+  const { user, isGuest, userOpdName } = useAuthStore(); 
 
-  // --- STATE DATA PEMOHON ---
+  // --- STATE FORM ---
   const [name, setName] = useState('');
-  const [idNumber, setIdNumber] = useState(''); 
-  const [opdName, setOpdName] = useState('');   
+  const [nip, setNip] = useState(''); 
+  const [opdName, setOpdName] = useState('');
+  const [opdId, setOpdId] = useState<number | null>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
 
-  // 2. Auto-Fill Data
+  // 2. Validasi & Auto-Fill (DENGAN FETCH OPD NAME)
   useEffect(() => {
-    if (!isGuest && user) {
-      setName(user.full_name || user.username || '');
-      // Asumsi NIP ada di user object (gunakan 'as any' jika type belum diupdate)
-      setIdNumber((user as any).nip || '');
+    const initData = async () => {
+      console.log('=== CREATE REQUEST SCREEN MOUNTED ===');
       
-      // ✅ PERBAIKAN ERROR TS: Gunakan casting (user as any) untuk akses properti dinamis
-      // Cek opd_name atau opd atau opd_id
-      const userOpd = (user as any).opd_name || (user as any).opd || (user as any).unit || '';
-      setOpdName(userOpd);
-      
-      setEmail(user.email || '');
-      setPhone(user.phone || '');
-      setAddress((user as any).address || '');
-    }
-  }, [isGuest, user]);
+      if (isGuest) {
+        Alert.alert("Akses Ditolak", "Fitur Permintaan hanya untuk Pegawai.", [
+          { text: "Kembali", onPress: () => navigation.goBack() }
+        ]);
+        return;
+      }
+
+      if (user) {
+        console.log('👤 USER DATA FOUND');
+        
+        setName(user.full_name || user.username || '');
+        setNip(user.nip || ''); 
+        setEmail(user.email || '');
+        setPhone(user.phone || '');
+        setAddress((user as any).address || '');
+
+        // --- LOGIC PENCARIAN NAMA OPD ---
+        let detectedName = userOpdName(); // Coba ambil dari store dulu
+        // Ambil ID dari object nested ATAU dari field flat opd_id (sesuai log console kamu)
+        let detectedId = user.opd?.id || (user as any).opd_id || null;
+
+        console.log(`🔍 DEBUG OPD: Name="${detectedName}", ID=${detectedId}`);
+
+        // KASUS: Kita punya ID (1), tapi Nama masih kosong ("")
+        if (!detectedName && detectedId) {
+          console.log('⚠️ Nama OPD kosong, mencoba fetch dari Catalog API...');
+          try {
+            // Ambil daftar semua OPD
+            const allOpds = await catalogApi.getOpds(); 
+            // Cari yang ID-nya cocok
+            const foundOpd = allOpds.find((o: any) => o.id === detectedId);
+            
+            if (foundOpd) {
+              console.log('✅ OPD FOUND IN CATALOG:', foundOpd.name);
+              detectedName = foundOpd.name;
+            } else {
+              console.warn('❌ OPD ID not found in catalog');
+            }
+          } catch (error) {
+            console.error('❌ Failed to fetch OPD list:', error);
+          }
+        }
+
+        // Set State Akhir
+        setOpdName(detectedName);
+        setOpdId(detectedId);
+      }
+    };
+
+    initData();
+  }, [isGuest, user, navigation]);
 
   const handleNext = () => {
-    // Validasi input
-    if (!name || !idNumber || !opdName || !phone) {
-      Alert.alert('Mohon Lengkapi', 'Data diri wajib diisi sebelum lanjut.');
+    // Validasi
+    // Kita cek opdName. Jika opdId ada tapi opdName kosong, user tetap harus isi/sistem gagal load.
+    if (!name || !nip || !opdName) {
+      Alert.alert('Data Belum Lengkap', 'Nama, NIP, dan Nama OPD wajib terisi. Pastikan data profil Anda lengkap.');
       return;
     }
-
-    // Lanjut ke Step 2
-    navigation.navigate('DetailRequest', {
-      userData: { name, idNumber, opd: opdName, email, phone, address }
-    });
+    
+    const userData = {
+      name,
+      nip,
+      opdName,
+      opdId,
+      email,
+      phone,
+      address
+    };
+    
+    navigation.navigate('DetailRequest', { userData });
   };
+
+  // --- HELPER STYLES ---
+  const styles = getStyles(theme, colors, typography);
 
   // --- COMPONENT INPUT HELPER ---
   const renderInput = (
@@ -67,20 +124,26 @@ export default function CreateRequestScreen() {
     isMultiline: boolean = false,
     keyboardType: 'default' | 'numeric' | 'email-address' | 'phone-pad' = 'default'
   ) => {
-    // Logic ReadOnly: Pegawai tidak bisa edit Nama, NIP, OPD (Kecuali alamat/hp mungkin berubah)
-    const isReadOnly = !isGuest && (label.includes('Nama') || label.includes('NIP') || label.includes('Nama OPD'));
+    let isReadOnly = false;
 
-    // Warna Input Responsif
+    // Nama & NIP selalu Read Only
+    if (label === 'Nama Lengkap' || label === 'NIP') {
+      isReadOnly = true;
+    }
+    // OPD Read Only JIKA datanya berhasil ditemukan/di-fetch
+    else if (label === 'Nama OPD') {
+        if (value && value.trim().length > 0) {
+            isReadOnly = true;
+        }
+    }
+
     const inputBg = isDark 
       ? colors.background.card 
-      : (isReadOnly ? '#F3F4F6' : '#FFFFFF');
-
+      : (isReadOnly ? colors.gray[100] : colors.background.primary); 
+    
     return (
       <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: colors.text.secondary }]}>
-          {label}
-        </Text>
-        
+        <Text style={styles.label}>{label}</Text>
         <View style={[
           styles.inputWrapper, 
           isMultiline && styles.textAreaWrapper,
@@ -93,12 +156,15 @@ export default function CreateRequestScreen() {
             style={[
               styles.input, 
               isMultiline && styles.textAreaInput,
-              { color: isReadOnly ? colors.text.secondary : colors.text.primary }
+              { 
+                color: isReadOnly ? colors.text.secondary : colors.text.primary,
+                fontSize: theme.fontSize.sm, 
+              }
             ]}
             value={value}
             onChangeText={setValue}
             placeholder={placeholder}
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={colors.text.secondary} 
             multiline={isMultiline}
             keyboardType={keyboardType}
             editable={!isReadOnly}
@@ -110,181 +176,166 @@ export default function CreateRequestScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.primary }]}>
-      
-      {/* HEADER */}
+    <View style={styles.container}>
       <CustomHeader 
-        type="page" 
-        title="Permintaan"
+        type="page"
+        title="Permintaan Layanan"
         showNotificationButton={true} 
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={{ flex: 1 }}
-        // Hapus offset jika mengganggu, atau sesuaikan
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} 
-      >
-        <ScrollView 
-          showsVerticalScrollIndicator={false} 
-          contentContainerStyle={{ flexGrow: 1}}
+      <View style={styles.contentCard}>
+        <KeyboardAwareScrollView
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
+          extraScrollHeight={Platform.OS === 'ios' ? 50 : 100}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 60 }}
+          keyboardShouldPersistTaps="handled"
         >
           
-          {/* CARD KONTEN */}
-          <View style={[
-            styles.contentCard, 
-            { backgroundColor: colors.background.primary }
-          ]}>
-            
-            {/* STEPPER */}
-            <View style={styles.stepContainer}>
-              <View style={styles.stepWrapper}>
-                <View style={[styles.stepCircle, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.stepTextActive}>1</Text>
-                </View>
-                <Text style={[styles.stepLabel, { color: colors.text.secondary }]}>Data Pemohon</Text>
+          {/* STEPPER */}
+          <View style={styles.stepContainer}>
+            <View style={styles.stepWrapper}>
+              <View style={[styles.stepCircle, { backgroundColor: colors.primary }]}>
+                <Text style={styles.stepTextActive}>1</Text>
               </View>
-              <View style={[styles.stepLine, { backgroundColor: colors.border.light }]} />
-              <View style={styles.stepWrapper}>
-                <View style={[styles.stepCircle, { backgroundColor: colors.border.light }]}>
-                  <Text style={styles.stepTextInactive}>2</Text>
-                </View>
-                <Text style={[styles.stepLabel, { color: colors.text.tertiary }]}>Detail Layanan</Text>
+              <Text style={[styles.stepLabel, { color: colors.text.primary }]}>Data Pemohon</Text>
+            </View>
+            <View style={[styles.stepLine, { backgroundColor: colors.border.default }]} />
+            <View style={styles.stepWrapper}>
+              <View style={[styles.stepCircle, { backgroundColor: colors.border.default }]}>
+                <Text style={styles.stepTextInactive}>2</Text>
               </View>
+              <Text style={[styles.stepLabel, { color: colors.text.secondary }]}>Detail Layanan</Text>
             </View>
-
-            {/* HEADER TEXT */}
-            <View style={styles.headerTextContainer}>
-              <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>
-                Formulir Permintaan
-              </Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.text.secondary }]}>
-                Silahkan isi detail permintaan Anda pada form ini, kami akan segera menindaklanjuti.
-              </Text>
-            </View>
-
-            {/* DIVIDER BOX */}
-            <View style={[styles.sectionHeaderBox, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.sectionDividerText, { color: '#FFF' }]}>Data Diri Pemohon</Text>
-            </View>
-            
-            {/* FORM INPUTS */}
-            <View style={styles.formGroup}>
-                {renderInput('Nama Lengkap', name, setName, 'Contoh: Budi Santoso')}
-                {renderInput(!isGuest ? 'NIP' : 'NIK', idNumber, setIdNumber, 'Nomor Induk...', false, 'numeric')}
-                {renderInput('Nama OPD', opdName, setOpdName, 'Dinas Kominfo')}
-                {renderInput('Email', email, setEmail, 'email@contoh.com', false, 'email-address')}
-                {renderInput('No. Telepon (WhatsApp)', phone, setPhone, '0812...', false, 'phone-pad')}
-                {renderInput('Alamat Lengkap', address, setAddress, 'Jalan...', true)}
-            </View>
-
-            {/* FOOTER BUTTON */}
-            <TouchableOpacity 
-              style={styles.footerButton} 
-              onPress={handleNext}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.btnNextText, { color: colors.text.primary }]}>
-                Lanjut
-              </Text>
-              <View style={[styles.arrowCircle, { backgroundColor: colors.text.primary }]}>
-                <Ionicons 
-                  name="arrow-forward" 
-                  size={16} 
-                  color={colors.background.primary} 
-                />
-              </View>
-            </TouchableOpacity>
-
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          {/* HEADER TEXT */}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.sectionTitleMain}>Formulir Permintaan</Text>
+            <Text style={styles.sectionSubtitle}>
+              Data Nama, NIP, dan OPD diambil otomatis dari akun Anda.
+            </Text>
+          </View>
+
+          {/* DIVIDER BOX */}
+          <View style={styles.sectionHeaderBox}>
+            <Text style={styles.sectionDividerText}>Data Diri Pemohon</Text>
+          </View>
+          
+          {/* FORM INPUTS */}
+          <View style={styles.formGroup}>
+            {renderInput('Nama Lengkap', name, setName, 'Nama Pegawai')}
+            {renderInput('NIP', nip, setNip, 'Nomor Induk Pegawai', false, 'numeric')}
+            
+            {/* Field ini akan otomatis terisi jika fetch ID berhasil, atau bisa diketik jika gagal */}
+            {renderInput('Nama OPD', opdName, setOpdName, 'Sedang memuat data instansi...')}
+            
+            {renderInput('Email', email, setEmail, 'email@surabaya.go.id', false, 'email-address')}
+            {renderInput('No. Telepon (WhatsApp)', phone, setPhone, '0812...', false, 'phone-pad')}
+            {renderInput('Alamat Lengkap', address, setAddress, 'Gedung A Lantai 2...', true)}
+          </View>
+
+          {/* FOOTER BUTTON */}
+          <TouchableOpacity 
+            style={styles.footerButton} 
+            onPress={handleNext}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.btnNextText}>Lanjut</Text>
+            <View style={[styles.arrowCircle, { backgroundColor: colors.text.primary }]}>
+              <Ionicons name="arrow-forward" size={16} color={colors.white} />
+            </View>
+          </TouchableOpacity>
+
+        </KeyboardAwareScrollView>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  
+// --- STYLES GENERATOR ---
+const getStyles = (theme: any, colors: any, typography: any) => StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.primary 
+  },
   contentCard: {
     flex: 1,
-    borderTopLeftRadius: BorderRadius['2xl'],
-    borderTopRightRadius: BorderRadius['2xl'],
+    backgroundColor: colors.background.primary,
+    borderTopLeftRadius: theme.borderRadius['2xl'],
+    borderTopRightRadius: theme.borderRadius['2xl'],
     paddingHorizontal: wp(6),
     paddingTop: hp(3),
     marginTop: -hp(2), 
-    minHeight: hp(80),
   },
-
-  // --- STEPPER ---
-  stepContainer: { 
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: hp(3) 
-  },
+  
+  // Stepper
+  stepContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: hp(3) },
   stepWrapper: { alignItems: 'center', width: 80 },
-  stepCircle: { 
-    width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 5 
-  },
-  stepTextActive: { fontSize: 12, fontWeight: 'bold', color: '#FFF' },
-  stepTextInactive: { fontSize: 12, fontWeight: 'bold', color: '#666' },
-  stepLabel: { fontSize: 10, fontFamily: FontFamily.poppins.medium },
+  stepCircle: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 5 },
+  stepTextActive: { ...typography.caption, fontWeight: 'bold', color: colors.white },
+  stepTextInactive: { ...typography.caption, fontWeight: 'bold', color: colors.text.secondary },
+  stepLabel: { ...typography.caption, textAlign: 'center' },
   stepLine: { width: 50, height: 2, marginBottom: 15 },
 
-  // --- HEADERS ---
+  // Headers
   headerTextContainer: { alignItems: 'center', marginBottom: hp(3) },
-  sectionTitle: { 
-    fontFamily: FontFamily.poppins.semibold, 
-    fontSize: FontSize.xl, 
-    textAlign: 'center', 
-    marginBottom: 5 
-  },
-  sectionSubtitle: { 
-    fontFamily: FontFamily.poppins.regular, 
-    fontSize: FontSize.sm, 
-    textAlign: 'center', 
-    lineHeight: 20, 
-    paddingHorizontal: 10 
-  },
+  sectionTitleMain: { ...typography.h4, color: colors.text.primary, textAlign: 'center', marginBottom: 5 },
+  sectionSubtitle: { ...typography.bodySmall, color: colors.text.secondary, textAlign: 'center', paddingHorizontal: 10 },
 
+  // Section Divider
   sectionHeaderBox: { 
-    borderRadius: BorderRadius.md, 
-    paddingVertical: 10, 
+    backgroundColor: colors.sectionTitle.background, 
+    borderRadius: theme.borderRadius.md, 
+    paddingVertical: 8, 
     alignItems: 'center', 
-    marginBottom: hp(3) 
+    marginBottom: hp(2) 
   },
   sectionDividerText: { 
-    fontFamily: FontFamily.poppins.semibold, 
-    fontSize: FontSize.md 
+    ...typography.sectionTitle, 
+    color: colors.sectionTitle.text 
   },
 
-  // --- FORM ---
-  formGroup: { gap: hp(1.5) },
-  inputContainer: { marginBottom: 5 },
+  // Form
+  formGroup: { gap: hp(1.2) },
+  inputContainer: { marginBottom: 2 },
   label: { 
-    fontFamily: FontFamily.poppins.medium, 
-    fontSize: FontSize.sm, 
-    marginBottom: 6, 
+    ...typography.label, 
+    fontSize: theme.fontSize.xs, 
+    color: colors.text.secondary, 
+    marginBottom: 4, 
     marginLeft: 4 
   },
-  inputWrapper: {
-    borderRadius: BorderRadius.md, 
-    borderWidth: 1,
-    ...Shadow.sm
+  inputWrapper: { 
+    borderRadius: theme.borderRadius.md, 
+    borderWidth: 1, 
+    justifyContent: 'center', 
+    height: theme.inputHeight.md, 
+    ...theme.shadow.sm 
   },
   input: { 
-    fontFamily: FontFamily.poppins.regular, 
-    fontSize: FontSize.md, 
-    paddingHorizontal: 15, 
-    height: InputHeight.lg, 
+    fontFamily: theme.fontFamily.poppins.regular,
+    fontSize: theme.fontSize.sm, 
+    paddingHorizontal: 12, 
+    height: '100%',
+    includeFontPadding: false, 
+    paddingVertical: 0, 
   },
-  textAreaWrapper: { height: hp(15) },
-  textAreaInput: { height: '100%', paddingTop: 12 },
+  textAreaWrapper: { 
+    height: 100, 
+    justifyContent: 'flex-start' 
+  },
+  textAreaInput: { 
+    height: '100%', 
+    paddingTop: 10, 
+    paddingBottom: 10,
+    textAlignVertical: 'top'
+  },
 
-  // --- FOOTER ---
-  footerButton: { 
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', 
-    marginTop: hp(4), marginBottom: hp(2) 
-  },
-  btnNextText: { fontFamily: FontFamily.poppins.semibold, fontSize: FontSize.md, marginRight: 10 },
+  // Footer
+  footerButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: hp(3) },
+  btnNextText: { ...typography.button, color: colors.text.primary, marginRight: 10 },
   arrowCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 });

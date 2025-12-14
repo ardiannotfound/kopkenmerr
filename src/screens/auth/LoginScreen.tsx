@@ -7,9 +7,12 @@ import {
   StyleSheet, 
   Alert, 
   ScrollView, 
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView, 
+  Platform 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 // --- IMPORTS DESIGN SYSTEM ---
 import AuthHeader from '../../components/AuthHeader';
@@ -28,9 +31,7 @@ import EyeClosedIcon from '../../../assets/icons/matatutup.svg';
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
-  const { colors, theme } = useTheme();
-  
-  // Ambil action login dari store
+  const { colors } = useTheme();
   const { login } = useAuthStore(); 
 
   const [username, setUsername] = useState('');
@@ -39,7 +40,6 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    // 1. Validasi Input Kosong
     if (!username || !password) {
       Alert.alert('Gagal', 'Mohon isi username dan password');
       return;
@@ -47,38 +47,24 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // 2. Tembak API Login
       const response = await authApi.login({ username, password });
       
-      // ============================================================
-      // 🔒 SECURITY GATE: CEK ROLE SEBELUM MENYIMPAN SESI
-      // ============================================================
-      
-      // Daftar role yang DIPERBOLEHKAN masuk ke Mobile App
       const ALLOWED_ROLES = ['teknisi', 'pegawai_opd', 'masyarakat']; 
-      
-      // Ambil role ID dari response (antisipasi jika object atau string)
-      // Pastikan backend mengembalikan structure user.role.id atau user.role
       const userRoleId = typeof response.user.role === 'object' 
         ? response.user.role.id 
         : response.user.role; 
 
       if (!ALLOWED_ROLES.includes(userRoleId)) {
-        Alert.alert(
-          'Akses Ditolak', 
-          'Aplikasi Mobile hanya untuk Pegawai OPD dan Teknisi. Admin/Kabid silakan gunakan Web Dashboard.'
-        );
+        Alert.alert('Akses Ditolak', 'Aplikasi Mobile hanya untuk Pegawai OPD dan Teknisi.');
         setLoading(false);
-        return; // BERHENTI DI SINI
+        return; 
       }
-      // ============================================================
 
-      // 3. Simpan ke Store (Otomatis navigasi karena RootNavigator mendeteksi perubahan auth)
       login(response.token, response.user);
       
     } catch (error: any) {
       console.error(error);
-      const message = error.response?.data?.message || 'Gagal terhubung ke server atau username/password salah.';
+      const message = error.response?.data?.message || 'Gagal terhubung ke server.';
       Alert.alert('Login Gagal', message);
     } finally {
       setLoading(false);
@@ -90,7 +76,7 @@ export default function LoginScreen() {
   };
 
   const handleBack = () => {
-    navigation.goBack(); 
+    navigation.navigate('RoleSelection'); 
   };
 
   return (
@@ -101,24 +87,30 @@ export default function LoginScreen() {
 
       {/* FORM CONTAINER */}
       <View style={[styles.formContainer, { backgroundColor: colors.background.primary }]}>
-        <ScrollView 
+        
+        {/* ✅ SOLUSI: Gunakan KeyboardAwareScrollView */}
+        <KeyboardAwareScrollView
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
+          extraScrollHeight={Platform.OS === 'ios' ? 80 : 120} // ✅ Extra space saat keyboard muncul
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1 }} 
+          contentContainerStyle={{ 
+            flexGrow: 1, 
+            paddingBottom: hp(5) // ✅ Padding bottom yang cukup
+          }}
+          keyboardShouldPersistTaps="handled"
         >
           
           <View style={styles.formHeaderTextContainer}>
-            {/* FIXED: Gunakan colors.text.primary agar berubah Putih saat Dark Mode */}
             <Text style={[styles.titleLogin, { color: colors.text.primary }]}>
               Login
             </Text>
-            {/* FIXED: Subtitle menggunakan secondary text color */}
             <Text style={[styles.subtitleLogin, { color: colors.text.secondary }]}>
               Silahkan login untuk melanjutkan
             </Text>
           </View>
 
           {/* INPUT USERNAME */}
-          {/* FIXED: Label input menyesuaikan tema */}
           <Text style={[styles.label, { color: colors.text.primary }]}>
             Email / Username
           </Text>
@@ -126,16 +118,17 @@ export default function LoginScreen() {
             styles.inputBox, 
             { 
               borderColor: colors.border.default,
-              backgroundColor: colors.background.card // Input background juga dinamis
+              backgroundColor: colors.background.card 
             }
           ]}>
             <TextInput
               style={[styles.input, { color: colors.text.primary }]}
               placeholder="Masukkan Email/Username"
-              placeholderTextColor={colors.text.secondary} // Placeholder jangan terlalu gelap di dark mode
+              placeholderTextColor={colors.text.secondary}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
+              returnKeyType="next"
             />
             <View style={styles.iconWrapper}>
               <ProfileIcon width={22} height={22} color={colors.text.secondary} />
@@ -160,12 +153,17 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={secureText}
+              returnKeyType="done"
+              onSubmitEditing={handleLogin}
             />
-            <TouchableOpacity onPress={() => setSecureText(!secureText)} style={styles.iconWrapper}>
+            <TouchableOpacity 
+              onPress={() => setSecureText(!secureText)} 
+              style={styles.iconWrapper}
+            >
               {secureText ? (
-                 <EyeClosedIcon width={22} height={22} color={colors.text.secondary} />
+                <EyeClosedIcon width={22} height={22} color={colors.text.secondary} />
               ) : (
-                 <EyeOpenIcon width={22} height={22} color={colors.text.secondary} />
+                <EyeOpenIcon width={22} height={22} color={colors.text.secondary} />
               )}
             </TouchableOpacity>
           </View>
@@ -175,30 +173,39 @@ export default function LoginScreen() {
             style={styles.forgotPassContainer}
             onPress={handleForgotPassword}
           >
-            <Text style={[styles.forgotPassText, { color: colors.link }]}>Lupa Password?</Text>
+            <Text style={[styles.forgotPassText, { color: colors.link }]}>
+              Lupa Password?
+            </Text>
           </TouchableOpacity>
 
           {/* TOMBOL LOGIN */}
           <TouchableOpacity 
-            style={[styles.loginButton, { backgroundColor: colors.primary }]} 
+            style={[
+              styles.loginButton, 
+              { backgroundColor: colors.primary },
+              loading && { opacity: 0.7 }
+            ]} 
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={[styles.loginButtonText, { color: colors.white }]}>LOGIN</Text>
+              <Text style={[styles.loginButtonText, { color: colors.white }]}>
+                LOGIN
+              </Text>
             )}
           </TouchableOpacity>
 
           {/* TOMBOL KEMBALI */}
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={[styles.backButtonText, { color: colors.text.secondary }]}>Kembali</Text>
+            <Text style={[styles.backButtonText, { color: colors.text.secondary }]}>
+              Kembali
+            </Text>
           </TouchableOpacity>
 
-          <View style={{ height: hp(3) }} />
-
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </View>
   );
@@ -266,7 +273,7 @@ const styles = StyleSheet.create({
   
   forgotPassContainer: {
     alignItems: 'flex-end',
-    marginBottom: hp(2),
+    marginBottom: hp(3),
   },
   forgotPassText: {
     fontFamily: FontFamily.poppins.medium,
@@ -282,7 +289,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
-    marginTop: 'auto', 
+    marginTop: hp(2),
     marginBottom: hp(2), 
   },
   loginButtonText: {
@@ -290,11 +297,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     letterSpacing: 1,
   },
-
   backButton: {
     alignItems: 'center',
     paddingVertical: 10,
-    marginBottom: hp(1),
+    marginBottom: hp(2),
   },
   backButtonText: {
     fontFamily: FontFamily.poppins.medium,

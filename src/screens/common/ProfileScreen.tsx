@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState, useCallback } from 'react';
+import { 
+  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Image, RefreshControl 
+} from 'react-native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 // --- IMPORTS SYSTEM ---
@@ -9,33 +11,82 @@ import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../hooks/useTheme';
 import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontSize, FontFamily } from '../../styles/typography';
+import { authApi } from '../../services/api/auth'; 
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { colors } = useTheme();
   
-  const { user, userRole, isGuest, logout } = useAuthStore();
+  const { user, userRole, isGuest, logout, updateUserData } = useAuthStore();
   const role = userRole(); 
 
-  // --- 1. VIEW KHUSUS TAMU (GUEST) ---
+  // State untuk Refresh
+  const [refreshing, setRefreshing] = useState(false);
+
+  // --- LOGIC REFRESH DATA (PULL TO REFRESH) ---
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      console.log("🔄 Refreshing Profile Data...");
+      const response = await authApi.getMe();
+      
+      if (response && response.user) {
+        console.log("✅ Profile Refreshed:", response.user.avatar_url);
+        await updateUserData(response.user);
+      }
+    } catch (error) {
+      console.error("Failed to refresh profile:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [updateUserData]);
+
+  // --- HANDLE ACTIONS ---
+  const handleGuestLogin = async () => {
+    await logout();
+    navigation.dispatch(
+        CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Login' }], 
+        })
+    );
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Konfirmasi Keluar",
+      "Apakah Anda yakin ingin keluar?",
+      [
+        { text: "Batal", style: "cancel" },
+        { 
+          text: "Ya, Keluar", 
+          style: 'destructive', 
+          onPress: async () => {
+            await logout();
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' }], 
+                })
+            ); 
+          } 
+        }
+      ]
+    );
+  };
+
+  // --- VIEW TAMU ---
   if (isGuest) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
-        <CustomHeader 
-          type="page" 
-          title="Profil Akun" 
-          showNotificationButton={false} 
-        />
+        <CustomHeader type="page" title="Profil Akun" showNotificationButton={false} />
         <View style={[styles.guestContainer, { backgroundColor: colors.background.primary }]}>
           <Ionicons name="lock-closed-outline" size={80} color={colors.text.tertiary} />
           <Text style={[styles.guestTitle, { color: colors.text.primary }]}>Akses Terbatas</Text>
           <Text style={[styles.guestDesc, { color: colors.text.secondary }]}>
             Silahkan login terlebih dahulu untuk mengakses profil dan pengaturan akun Anda.
           </Text>
-          <TouchableOpacity 
-            style={[styles.loginBtn, { backgroundColor: colors.primary }]} 
-            onPress={() => logout()} 
-          >
+          <TouchableOpacity style={[styles.loginBtn, { backgroundColor: colors.primary }]} onPress={handleGuestLogin}>
             <Text style={[styles.loginText, { color: colors.white }]}>Login Sekarang</Text>
           </TouchableOpacity>
         </View>
@@ -43,7 +94,7 @@ export default function ProfileScreen() {
     );
   }
 
-  // --- 2. VIEW PEGAWAI / TEKNISI ---
+  // --- VIEW PEGAWAI ---
   const displayInitials = user?.full_name?.charAt(0).toUpperCase() || 'U';
   const displayName = user?.full_name || 'Pengguna';
   
@@ -53,21 +104,9 @@ export default function ProfileScreen() {
     return 'Pengguna';
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Konfirmasi Keluar",
-      "Apakah Anda yakin ingin keluar?",
-      [
-        { text: "Batal", style: "cancel" },
-        { text: "Ya, Keluar", style: 'destructive', onPress: () => logout() }
-      ]
-    );
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background.secondary }]}>
       
-      {/* 1. HEADER (Normal Flow) */}
       <CustomHeader 
         type="page" 
         title="Profil Saya" 
@@ -75,20 +114,25 @@ export default function ProfileScreen() {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 2. SCROLLVIEW (Normal Flow di bawah Header) */}
       <ScrollView 
         contentContainerStyle={{ paddingBottom: 50 }} 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
       >
         
-        {/* 3. PROFILE SECTION (Standard Layout) */}
+        {/* PROFILE CARD */}
         <View style={[styles.profileSection, { backgroundColor: colors.background.primary }]}>
           <View style={styles.profileRow}>
             
-            {/* Avatar */}
+            {/* FOTO PROFIL */}
             <View style={styles.avatarContainer}>
-              {user?.avatar_url ? (
-                <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+              {user?.avatar_url && user.avatar_url !== "" ? (
+                <Image 
+                  source={{ uri: `${user.avatar_url}?t=${new Date().getTime()}` }} 
+                  style={styles.avatarImage} 
+                />
               ) : (
                 <View style={[styles.avatarPlaceholder, { backgroundColor: colors.primary }]}>
                   <Text style={styles.avatarText}>{displayInitials}</Text>
@@ -96,7 +140,7 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Info User */}
+            {/* INFO USER */}
             <View style={styles.userInfo}>
               <Text style={[styles.userName, { color: colors.text.primary }]}>
                 {displayName}
@@ -111,22 +155,15 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Tombol Edit Kecil */}
-            <TouchableOpacity 
-              style={[styles.editBtnSmall, { backgroundColor: colors.background.secondary }]}
-              onPress={() => navigation.navigate('EditProfile')}
-            >
-              <Ionicons name="pencil" size={18} color={colors.primary} />
-            </TouchableOpacity>
+            {/* ❌ TOMBOL EDIT ICON DIHAPUS DARI SINI */}
 
           </View>
         </View>
 
-        {/* 4. MENU LIST */}
+        {/* MENU ITEMS */}
         <View style={styles.menuContainer}>
           <Text style={[styles.sectionLabel, { color: colors.text.tertiary }]}>AKUN</Text>
 
-          {/* Edit Profil */}
           <TouchableOpacity 
             style={[styles.menuItem, { backgroundColor: colors.background.card }]} 
             onPress={() => navigation.navigate('EditProfile')}
@@ -138,7 +175,6 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
           </TouchableOpacity>
 
-          {/* Ganti Password */}
           <TouchableOpacity 
             style={[styles.menuItem, { backgroundColor: colors.background.card }]} 
             onPress={() => navigation.navigate('ChangePassword')}
@@ -181,7 +217,7 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
           </TouchableOpacity>
 
-          {/* LOGOUT */}
+          {/* LOGOUT BUTTON */}
           <TouchableOpacity 
             style={[styles.logoutItem, { backgroundColor: '#ffebee' }]} 
             onPress={handleLogout}
@@ -233,115 +269,34 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
   },
 
-  // --- PROFILE HEADER (STANDARD) ---
+  // --- PROFILE STYLES ---
   profileSection: {
     padding: Spacing.lg,
     marginBottom: Spacing.sm,
-    // Agar terlihat seperti Card di atas background abu
     borderBottomLeftRadius: BorderRadius.xl,
     borderBottomRightRadius: BorderRadius.xl,
     ...Shadow.sm,
   },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center', // Center vertikal
-  },
-  avatarContainer: {
-    // Tidak perlu border tebal atau elevation berlebih
-  },
-  avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  userInfo: {
-    flex: 1,
-    marginLeft: Spacing.md,
-    justifyContent: 'center', // Center vertikal
-  },
-  userName: {
-    fontFamily: FontFamily.poppins.bold,
-    fontSize: FontSize.lg,
-    marginBottom: 2,
-  },
-  userRole: {
-    fontFamily: FontFamily.poppins.medium,
-    fontSize: FontSize.sm,
-  },
-  userNip: {
-    fontFamily: FontFamily.poppins.regular,
-    fontSize: FontSize.xs,
-    marginTop: 2,
-  },
-  editBtnSmall: {
-    padding: 8,
-    borderRadius: 20,
-    ...Shadow.sm,
-  },
+  profileRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarContainer: {},
+  avatarImage: { width: 80, height: 80, borderRadius: 40 },
+  avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
+  userInfo: { flex: 1, marginLeft: Spacing.md, justifyContent: 'center' },
+  userName: { fontFamily: FontFamily.poppins.bold, fontSize: FontSize.lg, marginBottom: 2 },
+  userRole: { fontFamily: FontFamily.poppins.medium, fontSize: FontSize.sm },
+  userNip: { fontFamily: FontFamily.poppins.regular, fontSize: FontSize.xs, marginTop: 2 },
+  // editBtnSmall styles removed
 
   // --- MENU LIST ---
-  menuContainer: {
-    paddingHorizontal: wp(6),
-    marginTop: Spacing.md,
-  },
-  sectionLabel: {
-    fontFamily: FontFamily.poppins.bold,
-    fontSize: 11,
-    marginBottom: Spacing.sm,
-    marginLeft: 4,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.sm,
-    ...Shadow.sm, 
-  },
-  iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Spacing.md,
-  },
-  menuText: {
-    flex: 1,
-    fontFamily: FontFamily.poppins.medium,
-    fontSize: FontSize.md,
-  },
+  menuContainer: { paddingHorizontal: wp(6), marginTop: Spacing.md },
+  sectionLabel: { fontFamily: FontFamily.poppins.bold, fontSize: 11, marginBottom: Spacing.sm, marginLeft: 4 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, ...Shadow.sm },
+  iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: Spacing.md },
+  menuText: { flex: 1, fontFamily: FontFamily.poppins.medium, fontSize: FontSize.md },
   
   // --- LOGOUT ---
-  logoutItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.lg,
-  },
-  logoutText: {
-    fontFamily: FontFamily.poppins.semibold,
-    fontSize: FontSize.md,
-    marginLeft: 10,
-  },
-  versionText: {
-    textAlign: 'center',
-    marginTop: Spacing.lg,
-    fontFamily: FontFamily.poppins.regular,
-    fontSize: 10,
-  },
+  logoutItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: Spacing.md, borderRadius: BorderRadius.lg, marginTop: Spacing.lg },
+  logoutText: { fontFamily: FontFamily.poppins.semibold, fontSize: FontSize.md, marginLeft: 10 },
+  versionText: { textAlign: 'center', marginTop: Spacing.lg, fontFamily: FontFamily.poppins.regular, fontSize: 10 },
 });

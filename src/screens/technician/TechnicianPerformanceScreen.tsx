@@ -6,7 +6,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { LineChart, PieChart } from "react-native-chart-kit";
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { PERFORMANCE_DATA } from '../../data/mockData';
+
+// --- MOCK DATA INTERNAL ---
+const PERFORMANCE_DATA = {
+  stats: {
+    ticketsResolved: { value: 45, diff: 12, isBetter: true }, // Naik 12% (Bagus)
+    mttr: { value: '2.5 Jam', diff: -5, isBetter: true },     // Turun 5% (Lebih Cepat = Bagus)
+    slaCompliance: { value: '98%', diff: 2, isBetter: true }, // Naik 2% (Bagus)
+    csat: { value: '4.8/5', diff: 0.1, isBetter: true }       // Naik 0.1 poin (Bagus)
+  },
+  weeklyTrend: {
+    labels: ["M1", "M2", "M3", "M4"],
+    incoming: [10, 15, 12, 18],
+    resolved: [9, 14, 11, 17]
+  },
+  composition: [
+    { name: "Hardware", population: 40, color: "#FF9800", legendFontColor: "#7F7F7F", legendFontSize: 12 },
+    { name: "Software", population: 30, color: "#2196F3", legendFontColor: "#7F7F7F", legendFontSize: 12 },
+    { name: "Jaringan", population: 20, color: "#4CAF50", legendFontColor: "#7F7F7F", legendFontSize: 12 },
+    { name: "Lainnya", population: 10, color: "#9E9E9E", legendFontColor: "#7F7F7F", legendFontSize: 12 }
+  ]
+};
 
 export default function TechnicianPerformanceScreen() {
   const [filter, setFilter] = useState('Bulan Ini');
@@ -44,9 +64,7 @@ export default function TechnicianPerformanceScreen() {
   const renderStatCard = (title: string, data: any, icon: any) => {
     // Logic Warna: Hijau jika isBetter=true, Merah jika false
     const trendColor = data.isBetter ? '#2e7d32' : '#d32f2f';
-    const trendIcon = data.isBetter ? 'arrow-up' : 'arrow-down';
-    // Khusus MTTR, kalau "arrow-down" (turun) itu justru bagus (isBetter=true)
-    // Jadi kita atur panahnya visual saja:
+    // Visual icon: panah naik/turun sesuai diff
     const visualIcon = data.diff > 0 ? 'arrow-up' : 'arrow-down';
 
     return (
