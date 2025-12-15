@@ -16,7 +16,7 @@ export default function AboutAppScreen() {
           Aplikasi terpadu untuk pengelolaan insiden dan permintaan layanan TI di lingkungan Pemerintah Kota. 
           Dikembangkan untuk mendukung SPBE (Sistem Pemerintahan Berbasis Elektronik).
         </Text>
-        <Text style={styles.credit}>© 2025 Dinas Kominfo</Text>
+        <Text style={styles.credit}>© 2025 SILADAN</Text>
       </View>
     </View>
   );

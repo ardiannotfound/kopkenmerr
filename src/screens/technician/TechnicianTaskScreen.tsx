@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// --- IMPORTS SYSTEM ---
-import CustomHeader from '../../components/CustomHeader'; // Gunakan header standar
+// --- IMPORT SYSTEM ---
+import CustomHeader from '../../components/CustomHeader';
 import { useTheme } from '../../hooks/useTheme';
-import { useAuthStore } from '../../store/authStore';
 import { incidentApi } from '../../services/api/incidents';
 import { requestApi } from '../../services/api/requests';
 
@@ -16,71 +23,78 @@ import { requestApi } from '../../services/api/requests';
 import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontFamily, FontSize } from '../../styles/typography';
 
-// Tipe Lokal
+// --- TYPES ---
 interface TaskItem {
   id: number | string;
   ticketNumber: string;
   title: string;
   status: string;
+  stage: string | null;
   opdName: string;
   type: 'incident' | 'request';
+  created_at: string;
+  priority: string;
 }
 
 export default function TechnicianTaskScreen() {
   const navigation = useNavigation<any>();
-  const { colors, isDark } = useTheme();
-  
-  // Ambil state filter
-  const [activeType, setActiveType] = useState<'incident' | 'request'>('incident');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const { theme, colors, isDark } = useTheme();
+  const styles = getStyles(theme, colors, isDark);
 
-  // State Data
+  const [activeType, setActiveType] = useState<'incident' | 'request'>('incident');
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [taskList, setTaskList] = useState<TaskItem[]>([]);
 
-  // --- FETCH DATA ---
+  // ================= FETCH DATA =================
   const loadTasks = useCallback(async () => {
-    setLoading(true);
+    // Jangan set loading true jika sedang refreshing (agar tidak kedip)
+    if (!refreshing) setLoading(true);
+    
     try {
       let dataRaw: any[] = [];
-      
-      // 1. Ambil data sesuai Tab Active
+
+      // 1. Fetch sesuai tab aktif
       if (activeType === 'incident') {
         dataRaw = await incidentApi.getAll();
       } else {
         dataRaw = await requestApi.getAll();
       }
 
-      // 2. Format Data
+      // 2. Normalisasi Data
       const formatted: TaskItem[] = (dataRaw || []).map((item: any) => ({
         id: item.id,
-        ticketNumber: item.ticket_number,
-        title: item.title,
-        status: item.status,
-        opdName: item.opd?.name || 'Umum',
+        ticketNumber: item.ticket_number ?? `#${item.id}`,
+        title: item.title ?? 'Tanpa Judul',
+        status: item.status ?? 'unknown',
+        stage: item.stage,
+        opdName: item.opd?.name ?? 'Umum',
         type: activeType,
+        created_at: item.created_at,
+        priority: item.priority ?? 'Medium',
       }));
 
-      // 3. Filter Logic (Client Side)
-      // Teknisi biasanya hanya melihat tiket yang assigned, in_progress, dsb.
-      // Sesuaikan filter ini dengan kebutuhan bisnis Anda.
-      const myTasks = formatted.filter(t => {
+      // 3. Filter Tiket Teknisi
+      // Tampilkan tiket yang statusnya SUDAH DITUGASKAN atau SEDANG DIPROSES
+      const filtered = formatted.filter(t => {
         const s = t.status.toLowerCase();
-        return s !== 'new' && s !== 'open'; // Contoh: Teknisi tidak lihat tiket 'new' yang belum diapprove
+        // Logika: Tampilkan jika assigned atau in_progress (sesuaikan dengan logic bisnismu)
+        return s === 'assigned' || s === 'in_progress' || s === 'resolved';
       });
 
-      setTaskList(myTasks);
+      // Sort by terbaru
+      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    } catch (error) {
-      console.error("Gagal load task teknisi:", error);
+      setTaskList(filtered);
+    } catch (err) {
+      console.error('Gagal load task teknisi:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeType]);
+  }, [activeType, refreshing]);
 
   useEffect(() => {
     loadTasks();
@@ -88,147 +102,163 @@ export default function TechnicianTaskScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadTasks();
+    // Kita panggil loadTasks, tapi state refreshing mentrigger logic di dalam useCallback
   };
 
-  // --- FILTER CLIENT SIDE ---
+  // ================= FILTER LOGIC =================
   const getFilteredTasks = () => {
-    let data = taskList;
+    let data = [...taskList];
 
-    // 1. Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      data = data.filter(t => 
-        t.title.toLowerCase().includes(q) || 
-        t.ticketNumber.toLowerCase().includes(q)
+      data = data.filter(
+        t =>
+          t.title.toLowerCase().includes(q) ||
+          t.ticketNumber.toLowerCase().includes(q)
       );
     }
-
-    // 2. Status Dropdown
-    if (statusFilter !== 'All') {
-      data = data.filter(t => t.status === statusFilter);
-    }
-
     return data;
   };
 
-  const getStatusColor = (status: string) => {
-    const s = status?.toLowerCase() || '';
-    switch (s) {
-      case 'assigned': return '#2196f3';
-      case 'in_progress': return '#4caf50';
-      case 'waiting': return '#9c27b0';
-      case 'resolved': return '#4FEA17';
-      default: return '#757575';
-    }
+  // ================= HELPERS UI =================
+  const getStatusStyle = (status: string) => {
+    const s = status.toLowerCase();
+    if (s === 'resolved') return { bg: isDark ? 'rgba(79, 234, 23, 0.2)' : '#DCFCE7', text: '#166534', label: 'SELESAI' };
+    if (s === 'in_progress') return { bg: isDark ? 'rgba(5, 63, 92, 0.2)' : '#E0F2FE', text: '#0284C7', label: 'DIPROSES' };
+    if (s === 'assigned') return { bg: isDark ? 'rgba(255, 149, 0, 0.2)' : '#FEF9C3', text: '#854D0E', label: 'DITUGASKAN' };
+    return { bg: colors.background.tertiary, text: colors.text.secondary, label: s.replace('_', ' ').toUpperCase() };
   };
 
-  // --- RENDER ITEM ---
-  const renderItem = ({ item }: { item: TaskItem }) => (
-    <View style={[styles.card, { backgroundColor: colors.background.card }]}>
-      <View style={styles.cardHeader}>
-        <Text style={[styles.ticketId, { color: colors.text.secondary }]}>{item.ticketNumber}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.statusText}>{item.status.replace('_', ' ').toUpperCase()}</Text>
-        </View>
-      </View>
-      
-      <Text style={[styles.title, { color: colors.text.primary }]}>{item.title}</Text>
-      <Text style={[styles.opd, { color: colors.text.secondary }]}>🏢 {item.opdName}</Text>
+  const getPriorityColor = (p: string) => {
+    const priority = p?.toLowerCase() || 'medium';
+    if (priority === 'high' || priority === 'major') return colors.error;
+    if (priority === 'medium') return colors.warning;
+    return colors.info;
+  };
 
-      <TouchableOpacity 
-        style={styles.detailButton}
-        // Arahkan ke detail yang benar
-        onPress={() => {
-           if(item.type === 'incident') navigation.navigate('TicketDetail', { ticketId: item.id });
-           else navigation.navigate('DetailRequest', { ticketId: item.id }); // Sesuaikan nama screen request
-        }}
+  // ================= RENDER ITEM =================
+  const renderItem = ({ item }: { item: TaskItem }) => {
+    const statusStyle = getStatusStyle(item.status);
+    const priorityColor = getPriorityColor(item.priority);
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.8}
+        onPress={() =>
+          navigation.navigate('TechnicianTicketDetail', {
+            ticketId: item.id,
+            ticketType: item.type,
+          })
+        }
       >
-        <Text style={styles.detailText}>Kerjakan / Detail</Text>
-        <Ionicons name="arrow-forward" size={16} color="#fff" />
+        {/* Priority Strip */}
+        <View style={[styles.priorityStrip, { backgroundColor: priorityColor }]} />
+
+        <View style={styles.cardContent}>
+          {/* Header Card: ID & Status */}
+          <View style={styles.cardHeader}>
+            <Text style={styles.ticketNumber}>{item.ticketNumber}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+              <Text style={[styles.statusText, { color: statusStyle.text }]}>
+                {statusStyle.label}
+              </Text>
+            </View>
+          </View>
+
+          {/* Title */}
+          <Text style={styles.title} numberOfLines={2}>
+            {item.title}
+          </Text>
+
+          {/* Meta Info */}
+          <View style={styles.metaContainer}>
+            <View style={styles.metaItem}>
+              <Ionicons name="business-outline" size={14} color={colors.text.tertiary} />
+              <Text style={styles.metaText} numberOfLines={1}>{item.opdName}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="calendar-outline" size={14} color={colors.text.tertiary} />
+              <Text style={styles.metaText}>
+                 {new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Action Icon (Arrow) */}
+        <View style={styles.arrowContainer}>
+           <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+        </View>
       </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background.primary }]}>
-      <CustomHeader 
-        type="page" 
+    <View style={styles.container}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background.primary} />
+      
+      <CustomHeader
+        type="page"
         title="Daftar Tugas"
-        showNotificationButton={true}
+        showNotificationButton
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 1. TABS */}
-      <View style={[styles.tabs, { backgroundColor: colors.background.card }]}>
-        <TouchableOpacity 
-          style={[styles.tabBtn, activeType==='incident' && { borderBottomColor: colors.primary }]} 
-          onPress={() => setActiveType('incident')}
-        >
-          <Text style={[styles.tabText, activeType==='incident' && { color: colors.primary }]}>Pengaduan</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabBtn, activeType==='request' && { borderBottomColor: colors.primary }]} 
-          onPress={() => setActiveType('request')}
-        >
-          <Text style={[styles.tabText, activeType==='request' && { color: colors.primary }]}>Permintaan</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. SEARCH & FILTER */}
-      <View style={styles.filterContainer}>
-        <View style={[styles.searchBox, { backgroundColor: colors.background.card }]}>
-          <Ionicons name="search" size={18} color={colors.text.secondary} />
-          <TextInput 
-            style={[styles.input, { color: colors.text.primary }]} 
-            placeholder="Cari Judul / ID..." 
+      {/* --- SEARCH BAR --- */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={20} color={colors.text.tertiary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari ID atau Judul..."
             placeholderTextColor={colors.text.tertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+               <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
+            </TouchableOpacity>
+          )}
         </View>
-        
-        <TouchableOpacity 
-          style={[styles.dropdownTrigger, { backgroundColor: colors.background.card }]} 
-          onPress={() => setShowStatusDropdown(!showStatusDropdown)}
+      </View>
+
+      {/* --- CUSTOM TABS --- */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeType === 'incident' && styles.activeTab]}
+          onPress={() => setActiveType('incident')}
         >
-          <Ionicons name="filter" size={18} color={colors.text.primary} />
+          <Text style={[styles.tabText, activeType === 'incident' && styles.activeTabText]}>Pengaduan</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.tabButton, activeType === 'request' && styles.activeTab]}
+          onPress={() => setActiveType('request')}
+        >
+          <Text style={[styles.tabText, activeType === 'request' && styles.activeTabText]}>Permintaan</Text>
         </TouchableOpacity>
       </View>
 
-      {/* DROPDOWN MENU */}
-      {showStatusDropdown && (
-        <View style={[styles.dropdownMenu, { backgroundColor: colors.background.card }]}>
-          {['All', 'assigned', 'in_progress', 'resolved'].map(status => (
-            <TouchableOpacity 
-              key={status} 
-              style={[styles.dropdownItem, { borderBottomColor: colors.border.light }]} 
-              onPress={() => { setStatusFilter(status); setShowStatusDropdown(false); }}
-            >
-              <Text style={{ color: colors.text.primary }}>
-                {status === 'All' ? 'Semua Status' : status.replace('_', ' ').toUpperCase()}
-              </Text>
-              {statusFilter === status && <Ionicons name="checkmark" size={16} color={colors.primary} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* LIST */}
+      {/* --- LIST --- */}
       {loading && !refreshing ? (
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
+        <View style={styles.centerEmpty}>
+           <ActivityIndicator size="large" color={colors.primary} />
+           <Text style={styles.emptyText}>Memuat tugas...</Text>
+        </View>
       ) : (
         <FlatList
           data={getFilteredTasks()}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
-            <View style={{alignItems:'center', marginTop: 50}}>
-              <Text style={{color: colors.text.secondary}}>Tidak ada tugas saat ini.</Text>
+            <View style={styles.centerEmpty}>
+               <Ionicons name="file-tray-outline" size={60} color={colors.text.tertiary} />
+               <Text style={[styles.emptyText, { marginTop: 10 }]}>Tidak ada tugas ditemukan.</Text>
             </View>
           }
         />
@@ -237,29 +267,157 @@ export default function TechnicianTaskScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
+// ================= STYLES GENERATOR =================
+const getStyles = (theme: any, colors: any, isDark: boolean) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.secondary, // Background abu-abu muda
+  },
   
-  tabs: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10 },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  tabText: { color: '#888', fontWeight: '600' },
+  // Search
+  searchContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
+    backgroundColor: colors.background.primary,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: isDark ? colors.background.card : '#F3F4F6',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    borderWidth: 1,
+    borderColor: isDark ? colors.border.light : 'transparent',
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: Spacing.sm,
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.base,
+    color: colors.text.primary,
+  },
 
-  filterContainer: { flexDirection: 'row', paddingHorizontal: 15, marginBottom: 10, alignItems: 'center', gap: 10 },
-  searchBox: { flex: 1, flexDirection: 'row', padding: 10, borderRadius: 8, alignItems: 'center', ...Shadow.sm },
-  input: { flex: 1, marginLeft: 10 },
-  dropdownTrigger: { padding: 12, borderRadius: 8, ...Shadow.sm },
+  // Tabs
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    backgroundColor: colors.background.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: colors.primary,
+  },
+  tabText: {
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.base,
+    color: colors.text.tertiary,
+  },
+  activeTabText: {
+    color: colors.primary,
+    fontFamily: FontFamily.poppins.semibold,
+  },
 
-  dropdownMenu: { position: 'absolute', top: 120, right: 20, width: 200, borderRadius: 8, ...Shadow.md, zIndex: 10, padding: 5 },
-  dropdownItem: { padding: 12, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between' },
+  // List
+  listContent: {
+    padding: Spacing.md,
+    paddingBottom: hp(10),
+  },
+  
+  // Card
+  card: {
+    flexDirection: 'row',
+    backgroundColor: colors.background.card,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+    overflow: 'hidden', // Agar strip priority tidak keluar radius
+    ...Shadow.sm,
+    borderWidth: 1,
+    borderColor: isDark ? colors.border.light : 'transparent',
+  },
+  priorityStrip: {
+    width: 5,
+    height: '100%',
+  },
+  cardContent: {
+    flex: 1,
+    padding: Spacing.md,
+  },
+  arrowContainer: {
+    width: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#F9FAFB',
+  },
+  
+  // Card Internal
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  ticketNumber: {
+    fontFamily: FontFamily.poppins.medium,
+    fontSize: FontSize.xs,
+    color: colors.text.tertiary,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontFamily: FontFamily.poppins.bold,
+    fontSize: 10,
+  },
+  title: {
+    fontFamily: FontFamily.poppins.semibold,
+    fontSize: FontSize.base,
+    color: colors.text.primary,
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  
+  // Meta Info (Opd, Date)
+  metaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 1,
+  },
+  metaText: {
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.xs,
+    color: colors.text.secondary,
+  },
 
-  listContent: { padding: 15 },
-  card: { borderRadius: 12, padding: 15, marginBottom: 15, ...Shadow.sm },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  ticketId: { fontWeight: 'bold' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  statusText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  title: { fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
-  opd: { fontSize: 12, marginBottom: 15 },
-  detailButton: { backgroundColor: '#007AFF', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 8 },
-  detailText: { color: '#fff', fontWeight: 'bold', marginRight: 5 },
+  // Empty State
+  centerEmpty: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: hp(10),
+  },
+  emptyText: {
+    fontFamily: FontFamily.poppins.regular,
+    fontSize: FontSize.sm,
+    color: colors.text.tertiary,
+    marginTop: Spacing.sm,
+  },
 });

@@ -206,16 +206,18 @@ export default function ProfileScreen() {
           {/* LAINNYA */}
           <Text style={[styles.sectionLabel, { color: colors.text.tertiary, marginTop: Spacing.lg }]}>LAINNYA</Text>
           
-          <TouchableOpacity 
-            style={[styles.menuItem, { backgroundColor: colors.background.card }]} 
-            onPress={() => navigation.navigate('AboutApp')}
-          >
-            <View style={[styles.iconBox, { backgroundColor: '#e8f5e9' }]}>
-              <Ionicons name="information-circle-outline" size={20} color="#2e7d32" />
-            </View>
-            <Text style={[styles.menuText, { color: colors.text.primary }]}>Tentang Aplikasi</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
-          </TouchableOpacity>
+          {/* 
+<TouchableOpacity 
+  style={[styles.menuItem, { backgroundColor: colors.background.card }]} 
+  onPress={() => navigation.navigate('AboutApp')}
+>
+  <View style={[styles.iconBox, { backgroundColor: '#e8f5e9' }]}>
+    <Ionicons name="information-circle-outline" size={20} color="#2e7d32" />
+  </View>
+  <Text style={[styles.menuText, { color: colors.text.primary }]}>Tentang Aplikasi</Text>
+  <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+</TouchableOpacity>
+*/}
 
           {/* LOGOUT BUTTON */}
           <TouchableOpacity 

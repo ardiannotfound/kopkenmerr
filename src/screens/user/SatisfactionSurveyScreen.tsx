@@ -12,26 +12,44 @@ import { useTheme } from '../../hooks/useTheme';
 import { wp, hp, Spacing, BorderRadius, Shadow } from '../../styles/spacing';
 import { FontSize, FontFamily } from '../../styles/typography';
 
+// --- IMPORTS API ---
+import { surveyApi } from '../../services/api/surveys';
+
 // --- IMPORTS SVG ---
 import SurveyCheckIcon from '../../../assets/icons/surveycek.svg'; 
 import SendIcon from '../../../assets/icons/kirim.svg'; 
-
-// ❌ Kita tidak perlu import API dulu karena mau Mocking
-// import { surveyApi } from '../../services/api/surveys';
 
 export default function SatisfactionSurveyScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { colors, isDark } = useTheme();
   
-  const { ticketId } = route.params || {};
+  // 1. AMBIL TICKET TYPE DARI PARAMS
+  // Pastikan TicketDetailScreen mengirim 'ticketType' (incident/request)
+  const { ticketId, ticketType } = route.params || {};
   
   const [rating, setRating] = useState(0); 
   const [review, setReview] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    // 1. Validasi Input
+  // Helper untuk menentukan kategori API
+  const getApiCategory = (type: string) => {
+    if (!type) return 'incidents'; // Default fallback
+    const lowerType = type.toLowerCase();
+    // Jika tipe mengandung 'request' atau 'permintaan', kirim 'requests'
+    if (lowerType.includes('request') || lowerType.includes('permintaan')) {
+      return 'requests';
+    }
+    // Sisanya anggap 'incidents'
+    return 'incidents';
+  };
+
+  const handleSubmit = async () => {
+    // Validasi Input
+    if (!ticketId) {
+      Alert.alert("Error", "ID Tiket tidak ditemukan.");
+      return;
+    }
     if (rating === 0) {
       Alert.alert("Mohon Isi Rating", "Silakan berikan bintang 1 sampai 5.");
       return;
@@ -39,24 +57,30 @@ export default function SatisfactionSurveyScreen() {
 
     setLoading(true);
 
-    // 2. SIMULASI API (Pura-pura kirim ke server)
-    setTimeout(() => {
-      setLoading(false);
-      
-      // Log data ke console (biar kelihatan data apa yang harusnya dikirim)
-      console.log("✅ [MOCK SUBMIT] Survey Data:", {
-        ticket_id: ticketId,
+    // Tentukan kategori sebelum kirim
+    const apiCategory = getApiCategory(ticketType);
+
+    try {
+      // 2. Panggil API (Error sudah dihapus)
+      await surveyApi.submitSurvey({
+        ticket_id: Number(ticketId),
         rating: rating,
         feedback: review,
-        date: new Date().toISOString()
+        category: apiCategory // ✅ Dinamis berdasarkan ticketType
       });
 
-      // 3. Tampilkan Alert Sukses
+      // 3. Sukses
       Alert.alert("Terima Kasih", "Ulasan Anda telah terkirim.", [
         { text: "OK", onPress: () => navigation.goBack() }
       ]);
-      
-    }, 1500); // Delay 1.5 detik biar ada sensasi loading
+
+    } catch (error: any) {
+      // 4. Handle Error
+      const errorMessage = error.response?.data?.message || "Gagal mengirim ulasan. Silakan coba lagi.";
+      Alert.alert("Gagal", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderStars = () => {
@@ -95,16 +119,16 @@ export default function SatisfactionSurveyScreen() {
           </View>
 
           <Text style={[styles.subtitleText, { color: colors.text.secondary }]}>
-            Kami menghargai pendapat Anda. Berikan ulasan terhadap penanganan tiket ini.
+            Kami menghargai pendapat Anda. Berikan ulasan terhadap penanganan tiket #{ticketId} ({ticketType}).
           </Text>
 
+          {/* ... Sisa komponen UI sama ... */}
+          
           <View style={styles.ratingSection}>
             <Text style={[styles.questionText, { color: dynamicPrimaryColor }]}>
               Seberapa puas Anda terhadap penanganan tiket ini?
             </Text>
-            
             {renderStars()}
-            
             <Text style={[styles.ratingLabel, { color: colors.text.tertiary }]}>
               {rating > 0 ? `${rating} dari 5 Bintang` : 'Ketuk bintang untuk menilai'}
             </Text>
@@ -114,7 +138,6 @@ export default function SatisfactionSurveyScreen() {
             <Text style={[styles.labelInput, { color: dynamicPrimaryColor }]}>
               Tulis Ulasan Anda disini!
             </Text>
-            
             <View style={[styles.inputBox, { backgroundColor: colors.background.card, borderColor: colors.border.default }]}>
               <TextInput
                 style={[styles.textInput, { color: colors.text.primary }]}
@@ -131,7 +154,7 @@ export default function SatisfactionSurveyScreen() {
 
           <View style={{ paddingHorizontal: wp(5) }}> 
             <TouchableOpacity 
-              style={[styles.submitButton, { backgroundColor: '#429EBD' }]} 
+              style={[styles.submitButton, { backgroundColor: '#429EBD', opacity: loading ? 0.7 : 1 }]} 
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.8}

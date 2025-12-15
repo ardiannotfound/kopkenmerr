@@ -173,9 +173,9 @@ export default function LoginScreen() {
             style={styles.forgotPassContainer}
             onPress={handleForgotPassword}
           >
-            <Text style={[styles.forgotPassText, { color: colors.link }]}>
+            {/* <Text style={[styles.forgotPassText, { color: colors.link }]}>
               Lupa Password?
-            </Text>
+            </Text> */}
           </TouchableOpacity>
 
           {/* TOMBOL LOGIN */}

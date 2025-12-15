@@ -48,6 +48,8 @@ import TechnicianTaskScreen from '../screens/technician/TechnicianTaskScreen';
 import TechnicianScheduleScreen from '../screens/technician/TechnicianScheduleScreen';
 import AssetHistoryScreen from '../screens/technician/AssetHistoryScreen';
 import TechnicianPerformanceScreen from '../screens/technician/TechnicianPerformanceScreen';
+import TechnicianTicketDetail from '../screens/technician/TechnicianTicketDetail';
+
 
 // Common
 import ScanQRScreen from '../screens/common/ScanQRScreen';
@@ -323,12 +325,25 @@ export default function RootNavigator() {
           </Stack.Group>
         ) : (
           <Stack.Group>
-            {isTechnician ? (
-               <Stack.Screen name="TechnicianApp" component={TechnicianTabs} />
-            ) : (
-               <Stack.Screen name="UserApp" component={UserTabs} />
-            )}
-          </Stack.Group>
+  {isTechnician ? (
+    <>
+      <Stack.Screen
+        name="TechnicianApp"
+        component={TechnicianTabs}
+      />
+      <Stack.Screen
+        name="TechnicianTicketDetail"
+        component={TechnicianTicketDetail}
+      />
+    </>
+  ) : (
+    <Stack.Screen
+      name="UserApp"
+      component={UserTabs}
+    />
+  )}
+</Stack.Group>
+
         )}
 
         {/* COMMON SCREENS */}

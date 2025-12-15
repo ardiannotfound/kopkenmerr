@@ -88,7 +88,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: 'rgba(255,255,255,0.5)' }]}>
-          © 2025 Pemerintah Kota
+          © 2025 SILADAN
         </Text>
       </View>
     </View>

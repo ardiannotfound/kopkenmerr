@@ -146,8 +146,15 @@ export default function TicketDetailScreen() {
     fetchDetail();
   }, [fetchDetail]);
 
+  const handleSurvey = () => {
+  navigation.navigate('SatisfactionSurvey', { 
+    ticketId: ticketId,  
+    ticketType: ticket.type // 👈 WAJIB: Kirim 'incident' atau 'request'
+  });
+};
+
   const handleReopen = () => Alert.alert("Info", "Fitur Reopen belum tersedia.");
-  const handleSurvey = () => navigation.navigate('SatisfactionSurvey', { ticketId });
+  // const handleSurvey = () => navigation.navigate('SatisfactionSurvey', { ticketId });
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -279,12 +286,12 @@ export default function TicketDetailScreen() {
               <Text style={styles.btnTextWhite}>Reopen</Text>
             </TouchableOpacity>
           )}
-          {(ticket.status === 'resolved' || ticket.status === 'closed') && (
+          {/* {(ticket.status === 'resolved' || ticket.status === 'closed') && (
             <TouchableOpacity style={[styles.btnAction, { backgroundColor: '#2D7FF9' }]} onPress={handleSurvey}>
               <UlasanIcon width={20} height={20} color="#FFF" style={{ marginRight: 6 }} />
               <Text style={styles.btnTextWhite}>Beri Ulasan</Text>
             </TouchableOpacity>
-          )}
+          )} */}
         </View>
       )}
 

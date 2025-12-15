@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -21,13 +21,26 @@ import { DashboardData } from '../../types/dashboard';
 import { wp, hp, Spacing, BorderRadius } from '../../styles/spacing';
 import { FontSize } from '../../styles/typography';
 
+// 🔧 Extended Ticket Type dengan SLA fields
+interface TicketWithSLA {
+  id: number;
+  ticket_number?: string;
+  type: string;
+  title: string;
+  status: string;
+  stage?: string;
+  sla_due?: string;
+  sla_breached?: boolean;
+  sla_target_date?: string;
+  sla_target_time?: string;
+}
+
 export default function TechnicianHomeScreen() {
   const navigation = useNavigation<any>();
   const { theme, colors, isDark } = useTheme();
   
-  // ✅ 1. AMBIL HELPER NAME DARI STORE
   const { user, getUserName, userOpdName } = useAuthStore();
-
+  
   // State
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,13 +72,75 @@ export default function TechnicianHomeScreen() {
 
   const styles = getStyles(theme, colors, isDark);
 
+  // --- 🔥 HELPER: CEK APAKAH TIKET MENDESAK ---
+  const isTicketUrgent = useCallback((ticket: TicketWithSLA) => {
+    // Jika sudah selesai/closed, tidak mendesak
+    const status = (ticket.status || '').toLowerCase();
+    if (status === 'resolved' || status === 'closed') {
+      return false;
+    }
+
+    // Cek SLA
+    const slaDue = ticket.sla_due;
+    if (!slaDue) return false; // Tidak ada SLA, tidak bisa ditentukan
+
+    const now = new Date();
+    const dueDate = new Date(slaDue);
+    
+    // Hitung selisih waktu dalam jam
+    const diffMs = dueDate.getTime() - now.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    // Mendesak jika:
+    // 1. SLA sudah lewat (breached)
+    // 2. SLA akan habis dalam 24 jam ke depan
+    return ticket.sla_breached || diffHours <= 24;
+  }, []);
+
+  // --- 🔥 FILTER TIKET MENDESAK ---
+  const urgentTasks = useMemo(() => {
+    const taskList = (data?.my_assigned_tickets || []) as TicketWithSLA[];
+    return taskList.filter(ticket => isTicketUrgent(ticket));
+  }, [data, isTicketUrgent]);
+
+  // --- HELPER: HITUNG WAKTU SLA TERSISA ---
+  const getSlaTimeRemaining = useCallback((slaDue: string) => {
+    const now = new Date();
+    const dueDate = new Date(slaDue);
+    const diffMs = dueDate.getTime() - now.getTime();
+    
+    if (diffMs < 0) {
+      const overdue = Math.abs(diffMs);
+      const hours = Math.floor(overdue / (1000 * 60 * 60));
+      const minutes = Math.floor((overdue % (1000 * 60 * 60)) / (1000 * 60));
+      return {
+        text: `Terlambat ${hours}j ${minutes}m`,
+        color: colors.error,
+        isOverdue: true
+      };
+    }
+    
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return {
+      text: `${hours}j ${minutes}m lagi`,
+      color: hours < 12 ? colors.error : colors.warning,
+      isOverdue: false
+    };
+  }, [colors]);
+
   // --- HELPER STATUS COLOR & TEXT ---
   const getStatusStyle = (status: string) => {
     const s = status?.toLowerCase() || '';
-    if (s === 'resolved' || s === 'closed') return { bg: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7', text: '#166534', label: 'SELESAI' };
-    if (s === 'in_progress') return { bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE', text: '#1E40AF', label: 'DIPROSES' };
-    if (s === 'assigned') return { bg: isDark ? 'rgba(14, 165, 233, 0.15)' : '#E0F2FE', text: '#0284C7', label: 'DITUGASKAN' };
-    if (s === 'open') return { bg: isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3', text: '#854D0E', label: 'BARU' };
+    if (s === 'resolved' || s === 'closed') 
+      return { bg: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7', text: '#166534', label: 'SELESAI' };
+    if (s === 'in_progress') 
+      return { bg: isDark ? 'rgba(59, 130, 246, 0.15)' : '#DBEAFE', text: '#1E40AF', label: 'DIPROSES' };
+    if (s === 'assigned') 
+      return { bg: isDark ? 'rgba(14, 165, 233, 0.15)' : '#E0F2FE', text: '#0284C7', label: 'DITUGASKAN' };
+    if (s === 'open') 
+      return { bg: isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3', text: '#854D0E', label: 'BARU' };
     return { bg: colors.background.secondary, text: colors.text.secondary, label: s.toUpperCase() };
   };
 
@@ -82,7 +157,6 @@ export default function TechnicianHomeScreen() {
 
   // --- DATA PREPARATION ---
   const stats = data?.by_status || { open: 0, assigned: 0, in_progress: 0, resolved: 0 };
-  const taskList = data?.my_assigned_tickets || [];
   
   const composition = data?.task_composition || [];
   const compAssigned = composition.find(c => c.status === 'assigned')?.value || 0;
@@ -106,16 +180,14 @@ export default function TechnicianHomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-
       <CustomHeader 
         type="home"
-        // ✅ 1. PERBAIKAN NAMA: Gunakan getUserName()
         userName={getUserName()}
         userUnit="Teknisi IT"
         showNotificationButton={true}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
-
+      
       <ScrollView 
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -124,7 +196,7 @@ export default function TechnicianHomeScreen() {
       >
         <View style={styles.content}>
           
-          {/* 2. RINGKASAN TUGAS (GRID) */}
+          {/* RINGKASAN TUGAS (GRID) */}
           <Text style={styles.sectionTitle}>Ringkasan Pekerjaan</Text>
           <View style={styles.gridContainer}>
             {renderCard('Tugas Baru', stats.open, colors.warning, 'alert-circle')}
@@ -133,7 +205,7 @@ export default function TechnicianHomeScreen() {
             {renderCard('Selesai', stats.resolved + (data?.by_status.closed || 0), colors.success, 'checkmark-circle')}
           </View>
 
-          {/* 3. KOMPOSISI TUGAS (BAR CHART) */}
+          {/* KOMPOSISI TUGAS (BAR CHART) */}
           <Text style={styles.sectionTitle}>Komposisi Status</Text>
           <View style={styles.chartCard}>
             <View style={styles.chartRow}>
@@ -159,57 +231,83 @@ export default function TechnicianHomeScreen() {
             </View>
           </View>
 
-          {/* 4. LIST TUGAS SAYA */}
+          {/* 🔥 LIST TUGAS MENDESAK (FILTERED) */}
           <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>Tugas Mendesak</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <Ionicons name="alert-circle" size={20} color={colors.error} style={{marginRight: 6}} />
+              <Text style={styles.sectionTitle}>Tugas Mendesak</Text>
+              {urgentTasks.length > 0 && (
+                <View style={styles.urgentBadge}>
+                  <Text style={styles.urgentBadgeText}>{urgentTasks.length}</Text>
+                </View>
+              )}
+            </View>
             <TouchableOpacity onPress={() => navigation.navigate('Tugas')}>
               <Text style={styles.linkText}>Lihat Semua</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.tableCard}>
-            {taskList.length > 0 ? taskList.map((ticket, index) => {
-               const statusStyle = getStatusStyle(ticket.status);
-               
-               // ✅ FIX 1: Normalisasi Type (Jaga-jaga kalau API kirim 'Request' atau null)
-               const safeType = (ticket.type || 'incident').toLowerCase(); 
+            {urgentTasks.length > 0 ? urgentTasks.map((ticket: TicketWithSLA, index) => {
+              const statusStyle = getStatusStyle(ticket.status);
+              const slaInfo = ticket.sla_due ? getSlaTimeRemaining(ticket.sla_due) : null;
+              
+              // Tentukan tipe tiket
+              const rawType = (ticket.type || '').toLowerCase();
+              let normalizedType = 'incident';
+              if (rawType.includes('permintaan') || rawType.includes('request')) {
+                normalizedType = 'request';
+              }
 
-               return (
+              return (
                 <TouchableOpacity 
                   key={ticket.id} 
                   style={[
                     styles.tableRow, 
-                    index === taskList.length - 1 && { borderBottomWidth: 0 }
+                    index === urgentTasks.length - 1 && { borderBottomWidth: 0 },
+                    slaInfo?.isOverdue && styles.overdueRow
                   ]}
-                  // ✅ FIX 2: Kirim safeType yang sudah pasti lowercase
                   onPress={() => {
-                    console.log("Navigating to:", ticket.id, safeType); // Debug Log
-                    navigation.navigate('TicketDetail', { 
+                    navigation.navigate('TechnicianTicketDetail', {
                       ticketId: ticket.id,
-                      ticketType: safeType 
+                      ticketType: normalizedType,
                     });
                   }}
                 >
                   <View style={{flex: 1, paddingRight: 10}}>
                     <View style={{flexDirection:'row', alignItems:'center', marginBottom: 4}}>
-                       <Text style={styles.tableId}>
-                         #{ (ticket as any).ticket_number || ticket.id }
-                       </Text>
-                       <View style={styles.dotSeparator} />
-                       
-                       {/* ✅ FIX 3: Label UI juga pakai safeType biar konsisten */}
-                       <Text style={styles.tableType}>
-                         {safeType === 'request' ? 'PERMINTAAN' : 'PENGADUAN'}
-                       </Text>
+                      <Text style={styles.tableId}>
+                        #{ticket.ticket_number || ticket.id}
+                      </Text>
+                      <View style={styles.dotSeparator} />
+                      <Text style={styles.tableType}>
+                        {normalizedType === 'request' ? 'PERMINTAAN' : 'PENGADUAN'}
+                      </Text>
                     </View>
+                    
                     <Text style={styles.tableTitle} numberOfLines={2}>{ticket.title}</Text>
+                    
+                    {/* 🔥 SLA WARNING */}
+                    {slaInfo && (
+                      <View style={[styles.slaWarning, { backgroundColor: slaInfo.isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'rgba(234, 179, 8, 0.1)' }]}>
+                        <Ionicons 
+                          name={slaInfo.isOverdue ? "time" : "timer"} 
+                          size={12} 
+                          color={slaInfo.color} 
+                          style={{marginRight: 4}}
+                        />
+                        <Text style={[styles.slaText, { color: slaInfo.color }]}>
+                          {slaInfo.text}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={{alignItems: 'flex-end'}}>
                     <View style={[styles.statusPill, { backgroundColor: statusStyle.bg }]}>
-                        <Text style={[styles.statusText, { color: statusStyle.text }]}>
-                          {statusStyle.label}
-                        </Text>
+                      <Text style={[styles.statusText, { color: statusStyle.text }]}>
+                        {statusStyle.label}
+                      </Text>
                     </View>
                     <Text style={styles.tableStage}>
                       {ticket.stage ? ticket.stage.replace('_', ' ') : '-'}
@@ -217,16 +315,16 @@ export default function TechnicianHomeScreen() {
                   </View>
                 </TouchableOpacity>
               );
-            }) : (
+            }) : (  
               <View style={{padding: 20, alignItems: 'center'}}>
                  <Ionicons name="checkmark-circle-outline" size={40} color={colors.success} />
-                 <Text style={{color: colors.text.secondary, marginTop: 5}}>
-                   Tidak ada tugas yang harus dikerjakan saat ini.
+                 <Text style={{color: colors.text.secondary, marginTop: 5, textAlign: 'center'}}>
+                   Tidak ada tugas mendesak saat ini.{'\n'}
+                   Semua tiket dalam batas SLA yang aman.
                  </Text>
               </View>
             )}
           </View>
-
         </View>
       </ScrollView>
     </View>
@@ -332,6 +430,18 @@ const getStyles = (theme: any, colors: any, isDark: boolean) => StyleSheet.creat
     alignItems: 'center', 
     marginBottom: 8 
   },
+  urgentBadge: {
+    backgroundColor: colors.error,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 8
+  },
+  urgentBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: theme.fontFamily.poppins.bold
+  },
   linkText: { 
     color: colors.primary, 
     fontSize: 12, 
@@ -351,13 +461,20 @@ const getStyles = (theme: any, colors: any, isDark: boolean) => StyleSheet.creat
     justifyContent: 'space-between', 
     alignItems: 'center' 
   },
+  overdueRow: {
+    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(254, 242, 242, 0.5)',
+  },
   tableId: { 
     fontSize: 11, 
     color: colors.primary, 
     fontFamily: theme.fontFamily.poppins.bold 
   },
   dotSeparator: {
-    width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.text.tertiary, marginHorizontal: 6
+    width: 3, 
+    height: 3, 
+    borderRadius: 1.5, 
+    backgroundColor: colors.text.tertiary, 
+    marginHorizontal: 6
   },
   tableType: {
     fontSize: 10,
@@ -368,7 +485,20 @@ const getStyles = (theme: any, colors: any, isDark: boolean) => StyleSheet.creat
     fontSize: 13, 
     color: colors.text.primary, 
     fontFamily: theme.fontFamily.poppins.semibold,
-    marginTop: 2
+    marginTop: 2,
+    marginBottom: 6
+  },
+  slaWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start'
+  },
+  slaText: {
+    fontSize: 10,
+    fontFamily: theme.fontFamily.poppins.bold
   },
   statusPill: { 
     paddingHorizontal: 8, 
